@@ -10,6 +10,8 @@ x:   ds 4
 y:   ds 4
 seed: ds 4  
 bcd: ds 5
+p1points: ds 1
+p2points: ds 1
 
 BSEG
 mf: dbit 1
@@ -70,9 +72,78 @@ MyProgram:
     clr TR2
 
 loop:
+    Set_Cursor(1, 11)
+    Display_BCD(p1points)
+    Set_Cursor(2, 11)
+    Display_BCD(p2points)
+    
     jb START_BUTTON, start_game
     Wait_Milli_Seconds(#50)
     jb START_BUTTON, start_game
     jnb START_BUTTON, $
+    ljmp loop
 
 start_game:
+    lcall random
+    lcall wait_random
+    mov a, seed+1
+    mov c, acc.3
+    mov HLbit, c
+    jc lose_tone
+    ljmp win_tone
+
+
+    
+
+
+start_game_hit1:
+    jb P1_BUTTON, start_game_hit2
+    Wait_Milli_Seconds(#50)
+    jb P1_BUTTON, start_game_hit2
+    jnb P1_BUTTON, $
+    clr a 
+    mov a, p1points
+    add a, #0x01
+    mov p2points, a
+    cjne a, #0x05, p1win
+    clr a
+    ljmp start_game
+
+start_game_hit2:
+    jb P2_BUTTON, start_game_hit1
+    Wait_Milli_Seconds(#50)
+    jb P2_BUTTON, start_game_hit1
+    jnb P2_BUTTON, $
+    clr a 
+    mov a, p2points
+    add a, #0x01
+    mov p2points, a
+    cjne a, #0x05, p2win
+    clr a
+    ljmp start_game
+
+start_game_nohit1:
+    jb P1_BUTTON, start_game_nohit2
+    Wait_Milli_Seconds(#50)
+    jb P1_BUTTON, start_game_nohit2
+    jnb P1_BUTTON, $
+    clr a 
+    mov a, p1points
+    cjne a, #0x00, start_game
+    sub a, #0x01
+    mov p1points, a
+    clr a
+    ljmp start_game
+
+start_game_nohit2:
+    jb P2_BUTTON, start_game_nohit1
+    Wait_Milli_Seconds(#50)
+    jb P2_BUTTON, start_game_nohit1
+    jnb P2_BUTTON, $
+    clr a 
+    mov a, p2points
+    cjne a, #0x00, start_game
+    sub a, #0x01
+    mov p2points, a
+    clr a
+    ljmp start_game
