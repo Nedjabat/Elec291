@@ -92,7 +92,12 @@ start_game:
     jc lose_tone
     ljmp win_tone
 
-
+lose_tone:
+    ;play sound
+    ljmp start_game_nohit1
+win: 
+    ;play sound
+    ljmp start_game_hit1
     
 
 
