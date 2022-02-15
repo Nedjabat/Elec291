@@ -116,7 +116,7 @@ start_game:
     lcall wait_random
     mov a, seed+1
     mov c, acc.3
-    mov HLbit, c
+    ;mov HLbit, c
 
     jc lose_tone
     ljmp win_tone
@@ -125,7 +125,7 @@ lose_tone:
     ;play sound
     ljmp start_game_nohit1
     
-win: 
+win_tone: 
     ;play sound
     ljmp start_game_hit1
     
