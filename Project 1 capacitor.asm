@@ -15,6 +15,12 @@ p2points: ds 1
 
 BSEG
 mf: dbit 1
+
+$NOLIST
+$include(LCD_4bit.inc) 
+$include(math32.inc)
+$LIST
+
 cseg
 ; These 'equ' must match the hardware wiring
 LCD_RS equ P3.2
@@ -42,9 +48,9 @@ random:
     mov x+1, seed+1
     mov x+2, seed+2
     mov x+3, seed+3
-    Load_y()
+    Load_y(214013)
     lcall mul32
-    Load_y()
+    Load_y(2531011)
     lcall add32
     mov seed+0, x+0
     mov seed+1, x+1
