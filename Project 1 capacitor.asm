@@ -158,6 +158,7 @@ MyProgram:
     Set_Cursor(2, 1)
     Send_Constant_String(#Initial_Message2)
     setb EA
+    clr TR0
     jb P4.5, $
     mov seed+0, TH2
     mov seed+1, #0x01
@@ -165,8 +166,6 @@ MyProgram:
     mov seed+3, TL2
     mov p1points, #0x00
     mov p2points, #0x00
-    clr TR0
-    clr TR2
     ljmp loop
 loop:
     Set_Cursor(1, 11)
@@ -205,10 +204,10 @@ win_tone:
     
 
 start_game_hit1:
-    jb P1_BUTTON, start_game_hit2
+    jb p1_press, start_game_hit2
     Wait_Milli_Seconds(#50)
-    jb P1_BUTTON, start_game_hit2
-    jnb P1_BUTTON, $
+    jb p1_press, start_game_hit2
+    jnb p1_press, $
     clr TR0
     clr a 
     mov a, p1points
@@ -222,10 +221,10 @@ p1win_jmp:
     ljmp p1win
 
 start_game_hit2:
-    jb P2_BUTTON, start_game_hit1
+    jb p2_press, start_game_hit1
     Wait_Milli_Seconds(#50)
-    jb P2_BUTTON, start_game_hit1
-    jnb P2_BUTTON, $
+    jb p2_press, start_game_hit1
+    jnb p2_press, $
     clr TR0
     clr a 
     mov a, p2points
@@ -239,10 +238,10 @@ p2win_jmp:
     ljmp p2win
 
 start_game_nohit1:
-    jb P1_BUTTON, start_game_nohit2
+    jb p1_press, start_game_nohit2
     Wait_Milli_Seconds(#50)
-    jb P1_BUTTON, start_game_nohit2
-    jnb P1_BUTTON, $
+    jb p1_press, start_game_nohit2
+    jnb p1_press, $
     clr TR0
     clr a 
     mov a, p1points
@@ -257,10 +256,10 @@ start_game_nohit1:
     ljmp start_game
 
 start_game_nohit2:
-    jb P2_BUTTON, start_game_nohit1
+    jb p2_press, start_game_nohit1
     Wait_Milli_Seconds(#50)
-    jb P2_BUTTON, start_game_nohit1
-    jnb P2_BUTTON, $
+    jb p2_press, start_game_nohit1
+    jnb p2_press, $
     clr TR0
     clr a 
     mov a, p2points
@@ -285,10 +284,10 @@ p1win:
     Send_Constant_String(#Playagain)
     Set_Cursor(2,1)
     Send_Constant_String(#Clear_screen)
-    jb P2_BUTTON, p1win_jmp2
+    jb START_BUTTON, p1win
     Wait_Milli_Seconds(#5)
-    jb P2_BUTTON, p1win_jmp2
-    jnb P2_BUTTON, $
+    jb START_BUTTON, p1win
+    jnb START_BUTTON, $
     ljmp restart_jmp
 p1win_jmp2:
     ljmp p1win
@@ -302,10 +301,10 @@ p2win:
     Send_Constant_String(#Playagain)
     Set_Cursor(2,1)
     Send_Constant_String(#Clear_screen)
-    jb P2_BUTTON, p1win_jmp1
+    jb START_BUTTON, p2win
     Wait_Milli_Seconds(#50)
-    jb P2_BUTTON, p1win_jmp1
-    jnb P2_BUTTON, $
+    jb START_BUTTON, p2win
+    jnb START_BUTTON, $
     ljmp restart_jmp
 
 p1win_jmp1:
