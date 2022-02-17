@@ -158,7 +158,7 @@ MyProgram:
     Set_Cursor(2, 1)
     Send_Constant_String(#Initial_Message2)
     setb EA
-    clr TR0
+    setb TR0
     jb P4.5, $
     mov seed+0, TH2
     mov seed+1, #0x01
@@ -194,12 +194,12 @@ start_game:
 lose_tone:
     ;ljmp play_lose
     lcall Timer0_Init1
-    setb TR0
+    clr TR0
     ljmp start_game_nohit1
 win_tone: 
     ;ljmp play_win
     lcall Timer0_Init1
-    setb TR0
+    clr TR0
     ljmp start_game_hit1
     
 
