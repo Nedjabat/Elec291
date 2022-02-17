@@ -8,6 +8,8 @@ P1_BUTTON		equ	P2.4
 P2_BUTTON	    equ	P2.6
 
 CLK           EQU 22118400
+TIMER0_RATE   EQU 4096     ; 2048Hz squarewave (peak amplitude of CEM-1203 speaker)
+TIMER0_RELOAD EQU ((65536-(CLK/TIMER1_RATE)))
 TIMER1_RATE   EQU 4200     ; 2048Hz squarewave (peak amplitude of CEM-1203 speaker)
 TIMER1_RELOAD EQU ((65536-(CLK/TIMER1_RATE)))
 TIMER1_RATE1   EQU 4000                 ;2000Hz frequency lose frequency
@@ -88,6 +90,7 @@ Timer0_ISR:
 Timer0_ISR_done:
 	pop acc
 	reti
+
 Timer1_Init:
 	mov a, TMOD
 	anl a, #0xf0 ; Clear the bits for timer 0
