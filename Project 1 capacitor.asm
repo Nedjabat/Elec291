@@ -346,6 +346,7 @@ start_game_nohit1:
     Display_BCD(p1points)
     Set_Cursor(2, 15)
     Display_BCD(p2points)
+    
     jb p1_press, start_game_nohit2
     Wait_Milli_Seconds(#50)
     jb p1_press, start_game_nohit2
