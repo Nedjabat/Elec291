@@ -231,10 +231,10 @@ loop:
 start_game:
     clr p1_press
     clr p2_press
-    Set_Cursor(1, 11)
-    Display_BCD(p1points)
-    Set_Cursor(2, 11)
-    Display_BCD(p2points)
+    ;Set_Cursor(1, 11)
+    ;Display_BCD(p1points)
+    ;Set_Cursor(2, 11)
+    ;Display_BCD(p2points)
     lcall random
     lcall wait_random
     Set_Cursor(1, 11)
