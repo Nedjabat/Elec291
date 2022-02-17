@@ -7,14 +7,19 @@ START_BUTTON   	equ P0.0
 P1_BUTTON		equ	P2.4
 P2_BUTTON	    equ	P2.6
 
-CLK           EQU 22118400 
-TIMER0_RATE   EQU 4096     ; 2048Hz squarewave (peak amplitude of CEM-1203 speaker)
+CLK           EQU 22118400
+TIMER0_RATE   EQU 2048     ; 2048Hz squarewave (peak amplitude of CEM-1203 speaker)
 TIMER0_RELOAD EQU ((65536-(CLK/TIMER0_RATE)))
-TIMER2_RATE   EQU 1000     ; 1000Hz, for a timer tick of 1ms
+TIMER1_RATE   EQU 4000                 ;2000Hz frequency lose frequency
+TIMER2_RATE   EQU 4200                 ;2100Hz frequency win frequency
+TIMER1_RELOAD EQU ((65536-(CLK/TIMER1_RATE)))
 TIMER2_RELOAD EQU ((65536-(CLK/TIMER2_RATE)))
 
 org 0000H
    ljmp MyProgram
+
+org 0x000B
+	ljmp Timer0_ISR
 
 DSEG at 30H
 x:   ds 4
@@ -57,6 +62,64 @@ $include(LCD_4bit.inc) ; A library of LCD related functions and utility macros
 $include(math32.inc)
 $LIST
 
+Timer0_Init:
+	mov a, TMOD
+	anl a, #0xf0 ; Clear the bits for timer 0
+	orl a, #0x01 ; Configure timer 0 as 16-timer
+	mov TMOD, a
+	mov TH0, #high(TIMER0_RELOAD)
+	mov TL0, #low(TIMER0_RELOAD)
+	; Set autoreload value
+	mov RH0, #high(TIMER0_RELOAD)
+	mov RL0, #low(TIMER0_RELOAD)
+	; Enable the timer and interrupts
+    setb ET0  ; Enable timer 0 interrupt
+    clr TR0  ; Start timer 0
+	ret
+
+;---------------------------------;
+; ISR for timer 0.  Set to execute;
+; every 1/4096Hz to generate a    ;
+; 2048 Hz square wave at pin P1.1 ;
+;---------------------------------;
+Timer0_ISR:
+	;clr TF0  ; According to the data sheet this is done for us already.
+	cpl SOUND_OUT ; Connect speaker to P1.1!
+	reti
+
+Timer0_Init1:
+	mov a, TMOD
+	anl a, #0xf0 ; Clear the bits for timer 0
+	orl a, #0x01 ; Configure timer 0 as 16-timer
+	mov TMOD, a
+	mov TH0, #high(TIMER1_RELOAD)
+	mov TL0, #low(TIMER1_RELOAD)
+	; Set autoreload value
+	mov RH0, #high(TIMER1_RELOAD)
+	mov RL0, #low(TIMER1_RELOAD)
+	; Enable the timer and interrupts
+    setb ET0  ; Enable timer 0 interrupt
+    clr TR0  ; Start timer 0
+	ret
+
+;---------------------------------;
+; ISR for timer 0.  Set to execute;
+; every 1/4096Hz to generate a    ;
+; 2048 Hz square wave at pin P1.1 ;
+;---------------------------------;
+Timer0_ISR1:
+	;clr TF0  ; According to the data sheet this is done for us already.
+	cpl SOUND_OUT ; Connect speaker to P1.1!
+	reti
+
+
+;---------------------------------;
+; ISR for timer 0.  Set to execute;
+; every 1/4096Hz to generate a    ;
+; 2048 Hz square wave at pin P1.1 ;
+;---------------------------------;
+
+
 Wait1s:
     mov R2, #176
 X3: mov R1, #250
@@ -88,24 +151,31 @@ wait_random:
     ret
 
 MyProgram:
+    lcall Timer0_Init
+    ;lcall Timer2_Init
     Set_Cursor(1, 1)
     Send_Constant_String(#Initial_Message)
     Set_Cursor(2, 1)
     Send_Constant_String(#Initial_Message2)
+    mov p1points, #0x00
+    mov p2points, #0x00
     setb EA
+    setb TR0
     jb P4.5, $
     mov seed+0, TH2
     mov seed+1, #0x01
     mov seed+2, #0x87
     mov seed+3, TL2
+    clr TR0
     clr TR2
-
+    lcall Timer0_Init1
+    ljmp loop
 loop:
     Set_Cursor(1, 11)
     Display_BCD(p1points)
     Set_Cursor(2, 11)
     Display_BCD(p2points)
-    cpl SOUND_OUT
+    setb TR0
     jb START_BUTTON, start_game
     Wait_Milli_Seconds(#50)
     jb START_BUTTON, start_game
@@ -113,6 +183,10 @@ loop:
     ljmp loop
 
 start_game:
+    Set_Cursor(1, 11)
+    Display_BCD(p1points)
+    Set_Cursor(2, 11)
+    Display_BCD(p2points)
     lcall random
     lcall wait_random
     mov a, seed+1
@@ -122,12 +196,14 @@ start_game:
     ljmp win_tone
 
 lose_tone:
+    ;ljmp play_lose
+    setb TR0
     ljmp start_game_nohit1
 win_tone: 
-    ;play sound
+    ;ljmp play_win
+    setb TR1
     ljmp start_game_hit1
     
-
 
 start_game_hit1:
     jb P1_BUTTON, start_game_hit2
@@ -168,7 +244,7 @@ start_game_nohit1:
     jnb P1_BUTTON, $
     clr a 
     mov a, p1points
-    cjne a, #0x00, start_game
+    cjne a, #0x00, start_jmp
     mov x, a
     Load_y(1)
     lcall sub32
