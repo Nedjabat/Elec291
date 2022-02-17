@@ -240,9 +240,9 @@ start_game:
 
 lose_tone:
     lcall Timer1_Init
-    Set_Cursor(1, 11)
+    Set_Cursor(1, 15)
     Display_BCD(p1points)
-    Set_Cursor(2, 11)
+    Set_Cursor(2, 15)
     Display_BCD(p2points)
     ljmp start_game_nohit1
 win_tone: 
