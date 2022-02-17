@@ -151,7 +151,7 @@ wait_random:
     ret
 
 MyProgram:
-    lcall Timer0_Init
+ ;   lcall Timer0_Init
     ;lcall Timer2_Init
     Set_Cursor(1, 1)
     Send_Constant_String(#Initial_Message)
