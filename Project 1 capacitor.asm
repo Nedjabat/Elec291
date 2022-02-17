@@ -9,19 +9,19 @@ P2_BUTTON	    equ	P2.6
 
 CLK           EQU 22118400
 TIMER0_RATE   EQU 4096     ; 2048Hz squarewave (peak amplitude of CEM-1203 speaker)
-TIMER0_RELOAD EQU ((65536-(CLK/TIMER1_RATE)))
+TIMER0_RELOAD EQU ((65536-(CLK/TIMER0_RATE)))
 TIMER1_RATE   EQU 4200     ; 2048Hz squarewave (peak amplitude of CEM-1203 speaker)
 TIMER1_RELOAD EQU ((65536-(CLK/TIMER1_RATE)))
-TIMER1_RATE1   EQU 4000                 ;2000Hz frequency lose frequency
+TIMER1_RATE1   EQU 4000  
+TIMER1_RELOAD1 EQU ((65536-(CLK/TIMER1_RATE1)))               ;2000Hz frequency lose frequency
 TIMER2_RATE   EQU 4200                 ;2100Hz frequency win frequency
-TIMER1_RELOAD1 EQU ((65536-(CLK/TIMER1_RATE1)))
 TIMER2_RELOAD EQU ((65536-(CLK/TIMER2_RATE)))
 
 org 0000H
    ljmp MyProgram
 
 org 0x000B
-	ljmp Timer0_ISR
+	ljmp Timer1_ISR
 
 DSEG at 30H
 x:   ds 4
@@ -140,10 +140,6 @@ Timer1_Init1:
 ; every 1/4096Hz to generate a    ;
 ; 2048 Hz square wave at pin P1.1 ;
 ;---------------------------------;
-Timer1_ISR1:
-	;clr TF0  ; According to the data sheet this is done for us already.
-	cpl SOUND_OUT ; Connect speaker to P1.1!
-	reti
 InitTimer2:
 	mov T2CON, #0 ; Stop timer/counter.  Set as timer (clock input is pin 22.1184MHz).
 	; Set the reload value on overflow to zero (just in case is not zero)
@@ -243,14 +239,20 @@ start_game:
     ljmp win_tone
 
 lose_tone:
-    ;ljmp play_lose
     lcall Timer1_Init
-    clr TR1
+    setb TR1
+    Set_Cursor(1, 15)
+    Display_BCD(p1points)
+    Set_Cursor(2, 15)
+    Display_BCD(p2points)
     ljmp start_game_nohit1
 win_tone: 
-    ;ljmp play_win
     lcall Timer1_Init1
-    clr TR1
+    setb TR1
+    Set_Cursor(1, 15)
+    Display_BCD(p1points)
+    Set_Cursor(2, 15)
+    Display_BCD(p2points)
     ljmp start_game_hit1
     
 checkfreq1:
@@ -285,7 +287,7 @@ start_game_hit1:
     Wait_Milli_Seconds(#50)
     jb p1_press, start_game_hit2
     jnb p1_press, $
-    setb TR1
+    clr TR1
     clr a 
     mov a, p1points
     add a, #0x01
@@ -307,7 +309,7 @@ start_game_hit2:
     Wait_Milli_Seconds(#50)
     jb p2_press, start_game_hit1
     jnb p2_press, $
-    setb TR1
+    clr TR1
     clr a 
     mov a, p2points
     add a, #0x01
