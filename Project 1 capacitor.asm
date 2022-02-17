@@ -241,11 +241,11 @@ start_game_hit1:
     mov a, p1points
     add a, #0x01
     mov p2points, a
-    cjne a, #0x05, p1win_jmp
+    cjne a, #0x05, start_game
     clr a
     clr p1_press
     clr p2_press
-    ljmp start_game
+    ljmp p1win_jmp
 
 p1win_jmp:
     clr p1_press
@@ -262,10 +262,13 @@ start_game_hit2:
     mov a, p2points
     add a, #0x01
     mov p2points, a
-    cjne a, #0x05, p2win_jmp
+    cjne a, #0x05, start_jmp1
     clr p1_press
     clr p2_press
     clr a
+    ljmp p2win_jmp
+
+start_jmp1:
     ljmp start_game
 
 p2win_jmp:
@@ -281,7 +284,10 @@ start_game_nohit1:
     clr TR1
     clr a 
     mov a, p1points
-    cjne a, #0x00, start_jmp
+    cjne a, #0x00, start_jmpsub1
+    ljmp start_game
+
+start_jmpsub1:
     mov x, a
     Load_y(1)
     lcall sub32
@@ -291,17 +297,8 @@ start_game_nohit1:
     clr a
     clr p1_press
     clr p2_press
-    ljmp start_game
 
-start_game_nohit2:
-    jb p2_press, start_game_nohit1
-    Wait_Milli_Seconds(#50)
-    jb p2_press, start_game_nohit1
-    jnb p2_press, $
-    clr TR1
-    clr a 
-    mov a, p2points
-    cjne a, #0x00, start_jmp
+start_jmpsub2:
     mov x, a
     Load_y(1)
     lcall sub32
@@ -311,6 +308,17 @@ start_game_nohit2:
     clr a
     clr p1_press
     clr p2_press
+    ljmp start_jmp
+
+start_game_nohit2:
+    jb p2_press, start_game_nohit1
+    Wait_Milli_Seconds(#50)
+    jb p2_press, start_game_nohit1
+    jnb p2_press, $
+    clr TR1
+    clr a 
+    mov a, p2points
+    cjne a, #0x00, start_jmpsub2
     ljmp start_jmp
 
 start_jmp:
@@ -328,9 +336,9 @@ p1win:
     Send_Constant_String(#Playagain)
     Set_Cursor(2,1)
     Send_Constant_String(#Clear_screen)
-    jb START_BUTTON, p1win
+    jb START_BUTTON, p1win_jmp2
     Wait_Milli_Seconds(#5)
-    jb START_BUTTON, p1win
+    jb START_BUTTON, p1win_jmp2
     jnb START_BUTTON, $
     ljmp restart_jmp
 p1win_jmp2:
