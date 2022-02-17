@@ -301,16 +301,16 @@ p2win:
     Send_Constant_String(#Playagain)
     Set_Cursor(2,1)
     Send_Constant_String(#Clear_screen)
-    jb START_BUTTON, p2win
+    jb START_BUTTON, p2win_jmp1
     Wait_Milli_Seconds(#50)
-    jb START_BUTTON, p2win
+    jb START_BUTTON, p2win_jmp1
     jnb START_BUTTON, $
     ljmp restart_jmp
 
 p1win_jmp1:
     ljmp p1win
 
-p2win_jmp2:
+p2win_jmp1:
     ljmp p2win
 
 restart_jmp:
