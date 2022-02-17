@@ -251,7 +251,31 @@ win_tone:
     clr TR1
     ljmp start_game_hit1
     
+checkfreq1:
+    load_y(4720)
+    ;if freq<4720
+    ;setb freq1flag
+    mov x, freq1
+    lcall x_lteq_y
+    jb mf, freq1_press
+    reti
 
+freq1_press:
+    setb p1_press
+    reti
+
+checkfreq2:
+    load_y(4720)
+    ;if freq<4720
+    ;setb freq1flag
+    mov x, freq2
+    lcall x_lteq_y
+    jb mf, freq2_press
+    reti
+
+freq2_press:
+    setb p2_press
+    reti
 start_game_hit1:
     ljmp checkfreq1
     jb p1_press, start_game_hit2
@@ -263,7 +287,7 @@ start_game_hit1:
     mov a, p1points
     add a, #0x01
     mov p2points, a
-    cjne a, #0x05, start_game
+    cjne a, #0x05, start_jmp1
     clr a
     clr p1_press
     clr p2_press

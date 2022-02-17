@@ -292,9 +292,11 @@ checkfreq1:
     mov x, freq1
     lcall x_lteq_y
     jb mf, freq1_press
+    reti
 
 freq1_press:
     setb p1_press
+    reti
 
 checkfreq2:
     load_y(4720)
@@ -303,9 +305,11 @@ checkfreq2:
     mov x, freq2
     lcall x_lteq_y
     jb mf, freq2_press
+    reti
 
 freq2_press:
     setb p2_press
+    reti
 
 p1win_jmp:
     clr p1_press
@@ -335,6 +339,7 @@ p2win_jmp:
     ljmp p2win
 
 start_game_nohit1:
+    ljmp checkfreq1
     jb p1_press, start_game_nohit2
     Wait_Milli_Seconds(#50)
     jb p1_press, start_game_nohit2
