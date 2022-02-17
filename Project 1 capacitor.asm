@@ -241,12 +241,10 @@ start_game:
 lose_tone:
     ;ljmp play_lose
     lcall Timer1_Init
-    setb TR1
     ljmp start_game_nohit1
 win_tone: 
     ;ljmp play_win
     lcall Timer1_Init1
-    setb TR1
     ljmp start_game_hit1
     
 checkfreq1:
