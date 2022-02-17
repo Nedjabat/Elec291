@@ -158,7 +158,7 @@ MyProgram:
     Set_Cursor(2, 1)
     Send_Constant_String(#Initial_Message2)
     setb EA
-    clr TR0
+    setb TR0
     jb P4.5, $
     mov seed+0, TH2
     mov seed+1, #0x01
