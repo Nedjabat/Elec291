@@ -42,7 +42,6 @@ T0ov: ds 2
 T2ov: ds 2
 freq1: ds 4
 freq2: ds 4
-
 counter: ds 4
 
 BSEG
@@ -223,10 +222,10 @@ MyProgram:
     mov p2points, #0x00
     ljmp loop
 loop:
-    ;Set_Cursor(1, 11)
-    ;Display_BCD(p1points)
-    ;Set_Cursor(2, 11)
-    ;Display_BCD(p2points)
+    Set_Cursor(1, 11)
+    Display_BCD(p1points)
+    Set_Cursor(2, 11)
+    Display_BCD(p2points)
     jb START_BUTTON, start_game
     Wait_Milli_Seconds(#50)
     jb START_BUTTON, start_game
@@ -259,8 +258,6 @@ win_tone:
     
 checkfreq1:
     load_y(4720)
-    ;if freq<4720
-    ;setb freq1flag
     mov x, freq1
     lcall x_lteq_y
     jb mf, freq1_press
@@ -272,8 +269,6 @@ freq1_press:
 
 checkfreq2:
     load_y(4720)
-    ;if freq<4720
-    ;setb freq1flag
     mov x, freq2
     lcall x_lteq_y
     jb mf, freq2_press
