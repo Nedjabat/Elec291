@@ -239,12 +239,18 @@ start_game:
     ljmp win_tone
 
 lose_tone:
-    ;ljmp play_lose
     lcall Timer1_Init
+    Set_Cursor(1, 11)
+    Display_BCD(p1points)
+    Set_Cursor(2, 11)
+    Display_BCD(p2points)
     ljmp start_game_nohit1
 win_tone: 
-    ;ljmp play_win
     lcall Timer1_Init1
+    Set_Cursor(1, 11)
+    Display_BCD(p1points)
+    Set_Cursor(2, 11)
+    Display_BCD(p2points)
     ljmp start_game_hit1
     
 checkfreq1:
