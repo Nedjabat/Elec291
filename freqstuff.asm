@@ -1,3 +1,4 @@
+
  ;timer stuff to measure frequency
 
 ;Initializes timer/counter 2 as a 16-bit timer (given code from lab 3)
@@ -102,41 +103,97 @@ skip_this_0:
     
 ;-----------------------------------------------------------------
 
-;TIMER 2 STUFF
++;timer stuff to measure frequency
+;Initializes timer/counter 2 as a 16-bit timer (given code from lab 3)
 InitTimer2:
 	mov T2CON, #0 ; Stop timer/counter.  Set as timer (clock input is pin 22.1184MHz).
 	; Set the reload value on overflow to zero (just in case is not zero)
-@ -296,12 +395,12 @@ forever:
+	mov RCAP2H, #0
+	mov RCAP2L, #0
+	setb ET2
+    ret
+
+Timer2_ISR:
+	clr TF2  ; Timer 2 doesn't clear TF2 automatically. Do it in ISR
+	push acc
+	inc T2ov+0
+	mov a, T2ov+0
+	jnz Timer2_ISR_done
+	inc T2ov+1
+Timer2_ISR_done:
+	pop acc
+	reti
+	
+;---------------------------------;
+; Hardware initialization         ;
+;---------------------------------;
+Initialize_All:
+    lcall InitTimer2
+    lcall LCD_4BIT ; Initialize LCD
+    setb EA
+	ret
+	
+forever:
+    ; synchronize with rising edge of the signal applied to pin P0.0
+    clr TR2 ; Stop timer 2
+    mov TL2, #0
+    mov TH2, #0
+    mov T2ov+0, #0
+    mov T2ov+1, #0
+    clr TF2
+    setb TR2
 synch1:
 	mov a, T2ov+1
 	anl a, #0xfe
-;	jnz no_signal ; If the count is larger than 0x01ffffffff*45ns=1.16s, we assume there is no signal
+	jnz no_signal ; If the count is larger than 0x01ffffffff*45ns=1.16s, we assume there is no signal
     jb P0.0, synch1
 synch2:    
 	mov a, T2ov+1
 	anl a, #0xfe
-;	jnz no_signal
+	jnz no_signal
     jnb P0.0, synch2
     
     ; Measure the period of the signal applied to pin P0.0
-@ -336,7 +435,7 @@ skip_this:
+    clr TR2
+    mov TL2, #0
+    mov TH2, #0
+    mov T2ov+0, #0
+    mov T2ov+1, #0
+    clr TF2
+    setb TR2 ; Start timer 2
+measure1:
+	mov a, T2ov+1
+	anl a, #0xfe
+;	jnz no_signal 
+    jb P0.0, measure1
+measure2:    
+	mov a, T2ov+1
+	anl a, #0xfe
+;	jnz no_signal
+    jnb P0.0, measure2
+    clr TR2 ; Stop timer 2, [T2ov+1, T2ov+0, TH2, TL2] * 45.21123ns is the period
+
+	sjmp skip_this
+;no_signal:	
+;	Set_Cursor(2, 1)
+;    Send_Constant_String(#No_Signal_Str)
+;    ljmp forever ; Repeat! 
+skip_this:
+
+	; Make sure [T2ov+1, T2ov+2, TH2, TL2]!=0
+	mov a, TL2
 	orl a, TH2
 	orl a, T2ov+0
 	orl a, T2ov+1
-;	jz no_signal
+	jz no_signal
 	; Using integer math, convert the period to frequency:
 	mov x+0, TL2
 	mov x+1, TH2
-
- skip_this:
+	mov x+2, T2ov+0
+	mov x+3, T2ov+1
 	Load_y(45) ; One clock pulse is 1/22.1184MHz=45.21123ns
 	lcall mul32
 	
-	Load_y(2079) ;C = T /*(0.693*(R1+2*R2)) -> r1 = r2 = 1k -> C = T / 2079
-	lcall div32
-;capacitance is now in x
-	mov cap1, x
-;freq is now in x
 	mov freq2, x
 
     ljmp forever ; Repeat! 
