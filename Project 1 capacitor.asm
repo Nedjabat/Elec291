@@ -21,7 +21,7 @@ org 0000H
    ljmp MyProgram
 
 org 0x000B
-	ljmp Timer0_ISR
+	ljmp Timer1_ISR
 
 DSEG at 30H
 x:   ds 4
