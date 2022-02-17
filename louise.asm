@@ -43,6 +43,8 @@ T2ov: ds 2
 freq1: ds 4
 freq2: ds 4
 
+counter: ds 4
+
 BSEG
 mf: dbit 1
 p1_press: dbit 1
@@ -248,19 +250,11 @@ start_game:
 
 lose_tone:
     lcall Timer1_Init
-    Set_Cursor(1, 15)
-    Display_BCD(p1points)
-    Set_Cursor(2, 15)
-    Display_BCD(p2points)
-    setb TR1
+    load_x(0)
+    mov counter, x
     ljmp start_game_nohit1
 win_tone: 
     lcall Timer1_Init1
-    Set_Cursor(1, 15)
-    Display_BCD(p1points)
-    Set_Cursor(2, 15)
-    Display_BCD(p2points)
-    setb TR1
     ljmp start_game_hit1
     
 checkfreq1:
@@ -291,6 +285,10 @@ freq2_press:
 
 start_game_hit1:
     ljmp checkfreq1
+    Set_Cursor(1, 15)
+    Display_BCD(p1points)
+    Set_Cursor(2, 15)
+    Display_BCD(p2points)
     jb p1_press, start_game_hit2
     Wait_Milli_Seconds(#50)
     jb p1_press, start_game_hit2
@@ -305,6 +303,8 @@ start_game_hit1:
     clr p1_press
     clr p2_press
     ljmp p1win_jmp
+    
+ 
 
 p1win_jmp:
     clr p1_press
@@ -313,9 +313,13 @@ p1win_jmp:
 
 start_game_hit2:
     ljmp checkfreq2
-    jb p2_press, start_game_hit1
+    Set_Cursor(1, 15)
+    Display_BCD(p1points)
+    Set_Cursor(2, 15)
+    Display_BCD(p2points)
+    jb p2_press, start_game_hit1_jmp
     Wait_Milli_Seconds(#50)
-    jb p2_press, start_game_hit1
+    jb p2_press, start_game_hit1_jmp
     jnb p2_press, $
     clr TR1
     clr a 
@@ -327,7 +331,9 @@ start_game_hit2:
     clr p2_press
     clr a
     ljmp p2win_jmp
-
+start_game_hit1_jmp:
+	ljmp start_game_hit1
+	
 start_jmp1:
     ljmp start_game
 
@@ -338,14 +344,30 @@ p2win_jmp:
 
 start_game_nohit1:
     ljmp checkfreq1
+    Set_Cursor(1, 15)
+    Display_BCD(p1points)
+    Set_Cursor(2, 15)
+    Display_BCD(p2points)
+    mov y, counter
+    load_x(1)
+    lcall add32
+    load_y(1000)
+    lcall x_eq_y
+    jb mf, start_game_jmp
+    mov counter, X ; counter+
+    
     jb p1_press, start_game_nohit2
     Wait_Milli_Seconds(#50)
     jb p1_press, start_game_nohit2
     jnb p1_press, $
     clr TR1
+
     clr a 
     mov a, p1points
     cjne a, #0x00, start_jmpsub1
+    ljmp start_game
+
+start_game_jmp:
     ljmp start_game
 
 start_jmpsub1:
@@ -359,6 +381,33 @@ start_jmpsub1:
     clr p1_press
     clr p2_press
 
+
+start_game_nohit2:
+    ljmp checkfreq2
+    Set_Cursor(1, 15)
+    Display_BCD(p1points)
+    Set_Cursor(2, 15)
+    Display_BCD(counter)
+    
+    mov y, counter
+    load_x(1)
+    lcall add32
+    load_y(1000)
+    lcall x_eq_y
+    jb mf, start_game_jmp
+    mov counter, X ; counter+
+
+    jb p2_press, start_game_nohit1_jmp
+    Wait_Milli_Seconds(#50)
+    jb p2_press, start_game_nohit1_jmp
+    jnb p2_press, $
+    clr TR1
+    clr a 
+    mov a, p2points
+    cjne a, #0x00, start_jmpsub2
+    ljmp start_jmp
+    
+
 start_jmpsub2:
     mov x, a
     Load_y(1)
@@ -370,18 +419,9 @@ start_jmpsub2:
     clr p1_press
     clr p2_press
     ljmp start_jmp
-
-start_game_nohit2:
-    ljmp checkfreq2
-    jb p2_press, start_game_nohit1
-    Wait_Milli_Seconds(#50)
-    jb p2_press, start_game_nohit1
-    jnb p2_press, $
-    clr TR1
-    clr a 
-    mov a, p2points
-    cjne a, #0x00, start_jmpsub2
-    ljmp start_jmp
+    
+start_game_nohit1_jmp:
+	ljmp start_game_nohit1
 
 start_jmp:
     clr p1_press
