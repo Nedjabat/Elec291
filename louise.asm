@@ -9,12 +9,12 @@ P2_BUTTON	    equ	P2.6
 
 CLK           EQU 22118400
 TIMER0_RATE   EQU 4096     ; 2048Hz squarewave (peak amplitude of CEM-1203 speaker)
-TIMER0_RELOAD EQU ((65536-(CLK/TIMER1_RATE)))
+TIMER0_RELOAD EQU ((65536-(CLK/TIMER0_RATE)))
 TIMER1_RATE   EQU 4200     ; 2048Hz squarewave (peak amplitude of CEM-1203 speaker)
 TIMER1_RELOAD EQU ((65536-(CLK/TIMER1_RATE)))
-TIMER1_RATE1   EQU 4000                 ;2000Hz frequency lose frequency
+TIMER1_RATE1   EQU 4000  
+TIMER1_RELOAD1 EQU ((65536-(CLK/TIMER1_RATE1)))               ;2000Hz frequency lose frequency
 TIMER2_RATE   EQU 4200                 ;2100Hz frequency win frequency
-TIMER1_RELOAD1 EQU ((65536-(CLK/TIMER1_RATE1)))
 TIMER2_RELOAD EQU ((65536-(CLK/TIMER2_RATE)))
 
 org 0000H
@@ -22,6 +22,14 @@ org 0000H
 
 org 0x000B
 	ljmp Timer0_ISR
+
+org 0x0013
+	reti
+
+; Timer/Counter 1 overflow interrupt vector (not used in this code)
+org 0x001B
+	ljmp Timer1_ISR
+
 
 DSEG at 30H
 x:   ds 4
@@ -68,19 +76,6 @@ $include(LCD_4bit.inc) ; A library of LCD related functions and utility macros
 $include(math32.inc)
 $LIST
 
-
-;timer stuff to measure frequency
-
-;Initializes timer/counter 2 as a 16-bit timer (given code from lab 3)
-
-;timer 0 stuff:
-
-	
-    
-
-
-
-
 Timer0_Init:
 	mov a, TMOD
 	anl a, #0xf0 ; 11110000 Clear the bits for timer 0
@@ -107,6 +102,7 @@ Timer0_ISR:
 Timer0_ISR_done:
 	pop acc
 	reti
+
 Timer1_Init:
 	mov a, TMOD
 	anl a, #0xf0 ; Clear the bits for timer 0
@@ -119,27 +115,8 @@ Timer1_Init:
 	mov RL1, #low(TIMER1_RELOAD)
 	; Enable the timer and interrupts
     setb ET1  ; Enable timer 0 interrupt
-    clr TR1  ; Start timer 0
+    setb TR1  ; Start timer 0
 	ret
-
-InitTimer2:
-	mov T2CON, #0 ; Stop timer/counter.  Set as timer (clock input is pin 22.1184MHz).
-	; Set the reload value on overflow to zero (just in case is not zero)
-	mov RCAP2H, #0
-	mov RCAP2L, #0
-	setb ET2
-    ret
-
-Timer2_ISR:
-	clr TF2  ; Timer 2 doesn't clear TF2 automatically. Do it in ISR
-	push acc
-	inc T2ov+0
-	mov a, T2ov+0
-	jnz Timer2_ISR_done
-	inc T2ov+1
-Timer2_ISR_done:
-	pop acc
-	reti
 
 ;---------------------------------;
 ; ISR for timer 0.  Set to execute;
@@ -163,7 +140,7 @@ Timer1_Init1:
 	mov RL1, #low(TIMER1_RELOAD1)
 	; Enable the timer and interrupts
     setb ET1  ; Enable timer 0 interrupt
-    clr TR1  ; Start timer 0
+    setb TR1  ; Start timer 0
 	ret
 
 ;---------------------------------;
@@ -171,11 +148,24 @@ Timer1_Init1:
 ; every 1/4096Hz to generate a    ;
 ; 2048 Hz square wave at pin P1.1 ;
 ;---------------------------------;
-Timer1_ISR1:
-	;clr TF0  ; According to the data sheet this is done for us already.
-	cpl SOUND_OUT ; Connect speaker to P1.1!
-	reti
+InitTimer2:
+	mov T2CON, #0 ; Stop timer/counter.  Set as timer (clock input is pin 22.1184MHz).
+	; Set the reload value on overflow to zero (just in case is not zero)
+	mov RCAP2H, #0
+	mov RCAP2L, #0
+	setb ET2
+    ret
 
+Timer2_ISR:
+	clr TF2  ; Timer 2 doesn't clear TF2 automatically. Do it in ISR
+	push acc
+	inc T2ov+0
+	mov a, T2ov+0
+	jnz Timer2_ISR_done
+	inc T2ov+1
+Timer2_ISR_done:
+	pop acc
+	reti
 
 ;---------------------------------;
 ; ISR for timer 0.  Set to execute;
@@ -207,6 +197,7 @@ random:
     mov seed+2, x+2
     mov seed+3, x+3
     ret
+
 wait_random:
     Wait_Milli_Seconds(seed+0)
     Wait_Milli_Seconds(seed+1)
@@ -215,8 +206,7 @@ wait_random:
     ret
 
 MyProgram:
-    clr p1_press
-    clr p2_press
+    mov SP, #0x7F
     Set_Cursor(1, 1)
     Send_Constant_String(#Initial_Message)
     Set_Cursor(2, 1)
@@ -231,10 +221,10 @@ MyProgram:
     mov p2points, #0x00
     ljmp loop
 loop:
-    Set_Cursor(1, 11)
-    Display_BCD(p1points)
-    Set_Cursor(2, 11)
-    Display_BCD(p2points)
+    ;Set_Cursor(1, 11)
+    ;Display_BCD(p1points)
+    ;Set_Cursor(2, 11)
+    ;Display_BCD(p2points)
     jb START_BUTTON, start_game
     Wait_Milli_Seconds(#50)
     jb START_BUTTON, start_game
@@ -244,12 +234,12 @@ loop:
 start_game:
     clr p1_press
     clr p2_press
+    lcall random
+    lcall wait_random
     Set_Cursor(1, 11)
     Display_BCD(p1points)
     Set_Cursor(2, 11)
     Display_BCD(p2points)
-    lcall random
-    lcall wait_random
     mov a, seed+1
     mov c, acc.3
     ;mov HLbit, c
@@ -257,34 +247,22 @@ start_game:
     ljmp win_tone
 
 lose_tone:
-    ;ljmp play_lose
     lcall Timer1_Init
-    clr TR1
+    Set_Cursor(1, 15)
+    Display_BCD(p1points)
+    Set_Cursor(2, 15)
+    Display_BCD(p2points)
+    setb TR1
     ljmp start_game_nohit1
 win_tone: 
-    ;ljmp play_win
     lcall Timer1_Init1
-    clr TR1
+    Set_Cursor(1, 15)
+    Display_BCD(p1points)
+    Set_Cursor(2, 15)
+    Display_BCD(p2points)
+    setb TR1
     ljmp start_game_hit1
     
-
-start_game_hit1:
-    ljmp checkfreq1
-    jb p1_press, start_game_hit2
-    Wait_Milli_Seconds(#50)
-    jb p1_press, start_game_hit2
-    jnb p1_press, $
-    setb TR1
-    clr a 
-    mov a, p1points
-    add a, #0x01
-    mov p2points, a
-    cjne a, #0x05, p1win_jmp
-    clr a
-    clr p1_press
-    clr p2_press
-    ljmp start_game
-
 checkfreq1:
     load_y(4720)
     ;if freq<4720
@@ -292,11 +270,11 @@ checkfreq1:
     mov x, freq1
     lcall x_lteq_y
     jb mf, freq1_press
-    reti
+    ret
 
 freq1_press:
     setb p1_press
-    reti
+    ret
 
 checkfreq2:
     load_y(4720)
@@ -305,11 +283,28 @@ checkfreq2:
     mov x, freq2
     lcall x_lteq_y
     jb mf, freq2_press
-    reti
+    ret
 
 freq2_press:
     setb p2_press
-    reti
+    ret
+
+start_game_hit1:
+    ljmp checkfreq1
+    jb p1_press, start_game_hit2
+    Wait_Milli_Seconds(#50)
+    jb p1_press, start_game_hit2
+    jnb p1_press, $
+    clr TR1
+    clr a 
+    mov a, p1points
+    add a, #0x01
+    mov p2points, a
+    cjne a, #0x05, start_jmp1
+    clr a
+    clr p1_press
+    clr p2_press
+    ljmp p1win_jmp
 
 p1win_jmp:
     clr p1_press
@@ -322,15 +317,18 @@ start_game_hit2:
     Wait_Milli_Seconds(#50)
     jb p2_press, start_game_hit1
     jnb p2_press, $
-    setb TR1
+    clr TR1
     clr a 
     mov a, p2points
     add a, #0x01
     mov p2points, a
-    cjne a, #0x05, p2win_jmp
+    cjne a, #0x05, start_jmp1
     clr p1_press
     clr p2_press
     clr a
+    ljmp p2win_jmp
+
+start_jmp1:
     ljmp start_game
 
 p2win_jmp:
@@ -347,7 +345,10 @@ start_game_nohit1:
     clr TR1
     clr a 
     mov a, p1points
-    cjne a, #0x00, start_jmp
+    cjne a, #0x00, start_jmpsub1
+    ljmp start_game
+
+start_jmpsub1:
     mov x, a
     Load_y(1)
     lcall sub32
@@ -357,17 +358,8 @@ start_game_nohit1:
     clr a
     clr p1_press
     clr p2_press
-    ljmp start_game
 
-start_game_nohit2:
-    jb p2_press, start_game_nohit1
-    Wait_Milli_Seconds(#50)
-    jb p2_press, start_game_nohit1
-    jnb p2_press, $
-    clr TR1
-    clr a 
-    mov a, p2points
-    cjne a, #0x00, start_jmp
+start_jmpsub2:
     mov x, a
     Load_y(1)
     lcall sub32
@@ -377,6 +369,18 @@ start_game_nohit2:
     clr a
     clr p1_press
     clr p2_press
+    ljmp start_jmp
+
+start_game_nohit2:
+    ljmp checkfreq2
+    jb p2_press, start_game_nohit1
+    Wait_Milli_Seconds(#50)
+    jb p2_press, start_game_nohit1
+    jnb p2_press, $
+    clr TR1
+    clr a 
+    mov a, p2points
+    cjne a, #0x00, start_jmpsub2
     ljmp start_jmp
 
 start_jmp:
@@ -399,7 +403,6 @@ p1win:
     jb START_BUTTON, p1win_jmp2
     jnb START_BUTTON, $
     ljmp restart_jmp
-  
 p1win_jmp2:
     ljmp p1win
 p2win: 
@@ -581,7 +584,6 @@ skip_this:
 	mov freq2, x
 
     ljmp forever ; Repeat! 
-
 
 
 end
