@@ -193,11 +193,14 @@ random:
     mov seed+2, x+2
     mov seed+3, x+3
     ret
+
 wait_random:
     Wait_Milli_Seconds(seed+0)
     Wait_Milli_Seconds(seed+1)
     Wait_Milli_Seconds(seed+2)
     Wait_Milli_Seconds(seed+3)
+    mov p1points, #0x01
+    mov p2points, #0x01
     ret
 
 MyProgram:
@@ -215,10 +218,10 @@ MyProgram:
     mov p2points, #0x00
     ljmp loop
 loop:
-    Set_Cursor(1, 11)
-    Display_BCD(p1points)
-    Set_Cursor(2, 11)
-    Display_BCD(p2points)
+    ;Set_Cursor(1, 11)
+    ;Display_BCD(p1points)
+    ;Set_Cursor(2, 11)
+    ;Display_BCD(p2points)
     jb START_BUTTON, start_game
     Wait_Milli_Seconds(#50)
     jb START_BUTTON, start_game
@@ -234,6 +237,10 @@ start_game:
     Display_BCD(p2points)
     lcall random
     lcall wait_random
+    Set_Cursor(1, 11)
+    Display_BCD(p1points)
+    Set_Cursor(2, 11)
+    Display_BCD(p2points)
     mov a, seed+1
     mov c, acc.3
     ;mov HLbit, c
@@ -258,11 +265,11 @@ checkfreq1:
     mov x, freq1
     lcall x_lteq_y
     jb mf, freq1_press
-    reti
+    ret
 
 freq1_press:
     setb p1_press
-    reti
+    ret
 
 checkfreq2:
     load_y(4720)
@@ -271,11 +278,12 @@ checkfreq2:
     mov x, freq2
     lcall x_lteq_y
     jb mf, freq2_press
-    reti
+    ret
 
 freq2_press:
     setb p2_press
-    reti
+    ret
+
 start_game_hit1:
     ljmp checkfreq1
     jb p1_press, start_game_hit2
