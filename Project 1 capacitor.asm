@@ -8,11 +8,11 @@ P1_BUTTON		equ	P2.4
 P2_BUTTON	    equ	P2.6
 
 CLK           EQU 22118400
-TIMER1_RATE   EQU 2048     ; 2048Hz squarewave (peak amplitude of CEM-1203 speaker)
-TIMER1_RELOAD EQU ((65536-(CLK/TIMER0_RATE)))
+TIMER1_RATE   EQU 4200     ; 2048Hz squarewave (peak amplitude of CEM-1203 speaker)
+TIMER1_RELOAD EQU ((65536-(CLK/TIMER1_RATE)))
 TIMER1_RATE1   EQU 4000                 ;2000Hz frequency lose frequency
 TIMER2_RATE   EQU 4200                 ;2100Hz frequency win frequency
-TIMER1_RELOAD1 EQU ((65536-(CLK/TIMER1_RATE)))
+TIMER1_RELOAD1 EQU ((65536-(CLK/TIMER1_RATE1)))
 TIMER2_RELOAD EQU ((65536-(CLK/TIMER2_RATE)))
 
 org 0000H
@@ -62,6 +62,32 @@ $include(LCD_4bit.inc) ; A library of LCD related functions and utility macros
 $include(math32.inc)
 $LIST
 
+Timer0_Init:
+	mov a, TMOD
+	anl a, #0xf0 ; 11110000 Clear the bits for timer 0
+	orl a, #0x01 ; 00000001 Configure timer 0 as 16-timer
+	mov TMOD, a
+	mov TH0, #high(TIMER0_RELOAD)
+	mov TL0, #low(TIMER0_RELOAD)
+	; Set autoreload value
+	mov RH0, #high(TIMER0_RELOAD)
+	mov RL0, #low(TIMER0_RELOAD)
+	; Enable the timer and interrupts
+    setb ET0  ; Enable timer 0 interrupt
+    setb TR0  ; Start timer 0
+	ret
+
+Timer0_ISR:
+	clr TF0  ; Timer 2 doesn't clear TF2 automatically. Do it in ISR
+	push acc
+	inc T0ov+0
+	mov a, T0ov+0
+	jnz Timer0_ISR_done
+	inc T0ov+1
+
+Timer0_ISR_done:
+	pop acc
+	reti
 Timer1_Init:
 	mov a, TMOD
 	anl a, #0xf0 ; Clear the bits for timer 0
@@ -176,6 +202,8 @@ loop:
     ljmp loop
 
 start_game:
+    clr p1_press
+    clr p2_press
     Set_Cursor(1, 11)
     Display_BCD(p1points)
     Set_Cursor(2, 11)
@@ -191,12 +219,12 @@ start_game:
 lose_tone:
     ;ljmp play_lose
     lcall Timer1_Init
-    clr TR0
+    clr TR1
     ljmp start_game_nohit1
 win_tone: 
     ;ljmp play_win
     lcall Timer1_Init1
-    clr TR0
+    clr TR1
     ljmp start_game_hit1
     
 
@@ -205,16 +233,20 @@ start_game_hit1:
     Wait_Milli_Seconds(#50)
     jb p1_press, start_game_hit2
     jnb p1_press, $
-    clr TR0
+    setb TR1
     clr a 
     mov a, p1points
     add a, #0x01
     mov p2points, a
     cjne a, #0x05, p1win_jmp
     clr a
+    clr p1_press
+    clr p2_press
     ljmp start_game
 
 p1win_jmp:
+    clr p1_press
+    clr p2_press
     ljmp p1win
 
 start_game_hit2:
@@ -222,16 +254,20 @@ start_game_hit2:
     Wait_Milli_Seconds(#50)
     jb p2_press, start_game_hit1
     jnb p2_press, $
-    clr TR0
+    setb TR1
     clr a 
     mov a, p2points
     add a, #0x01
     mov p2points, a
     cjne a, #0x05, p2win_jmp
+    clr p1_press
+    clr p2_press
     clr a
     ljmp start_game
 
 p2win_jmp:
+    clr p1_press
+    clr p2_press
     ljmp p2win
 
 start_game_nohit1:
@@ -239,7 +275,7 @@ start_game_nohit1:
     Wait_Milli_Seconds(#50)
     jb p1_press, start_game_nohit2
     jnb p1_press, $
-    clr TR0
+    clr TR1
     clr a 
     mov a, p1points
     cjne a, #0x00, start_jmp
@@ -250,6 +286,8 @@ start_game_nohit1:
     da a
     mov p1points, a
     clr a
+    clr p1_press
+    clr p2_press
     ljmp start_game
 
 start_game_nohit2:
@@ -257,7 +295,7 @@ start_game_nohit2:
     Wait_Milli_Seconds(#50)
     jb p2_press, start_game_nohit1
     jnb p2_press, $
-    clr TR0
+    clr TR1
     clr a 
     mov a, p2points
     cjne a, #0x00, start_jmp
@@ -268,11 +306,17 @@ start_game_nohit2:
     da a
     mov p2points, a
     clr a
+    clr p1_press
+    clr p2_press
     ljmp start_jmp
 
 start_jmp:
+    clr p1_press
+    clr p2_press
     ljmp start_game
-p1win:  
+p1win:
+    clr p1_press
+    clr p2_press
     Set_Cursor(1, 9)
     Send_Constant_String(#Winner1_message1)
     Send_Constant_String(#Winner1_message2)
@@ -289,6 +333,8 @@ p1win:
 p1win_jmp2:
     ljmp p1win
 p2win: 
+    clr p1_press
+    clr p2_press
     Set_Cursor(1, 9)
     Send_Constant_String(#Winner2_message1)
     Set_Cursor(2,9)
