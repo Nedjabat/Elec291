@@ -21,7 +21,15 @@ org 0000H
    ljmp MyProgram
 
 org 0x000B
+	ljmp Timer0_ISR
+
+org 0x0013
+	reti
+
+; Timer/Counter 1 overflow interrupt vector (not used in this code)
+org 0x001B
 	ljmp Timer1_ISR
+
 
 DSEG at 30H
 x:   ds 4
@@ -240,19 +248,15 @@ start_game:
 
 lose_tone:
     lcall Timer1_Init
-    setb TR1
     Set_Cursor(1, 15)
     Display_BCD(p1points)
     Set_Cursor(2, 15)
     Display_BCD(p2points)
+    setb TR1
     ljmp start_game_nohit1
 win_tone: 
     lcall Timer1_Init1
     setb TR1
-    Set_Cursor(1, 15)
-    Display_BCD(p1points)
-    Set_Cursor(2, 15)
-    Display_BCD(p2points)
     ljmp start_game_hit1
     
 checkfreq1:
@@ -283,6 +287,10 @@ freq2_press:
 
 start_game_hit1:
     ljmp checkfreq1
+    Set_Cursor(1, 15)
+    Display_BCD(p1points)
+    Set_Cursor(2, 15)
+    Display_BCD(p2points)
     jb p1_press, start_game_hit2
     Wait_Milli_Seconds(#50)
     jb p1_press, start_game_hit2
@@ -305,6 +313,10 @@ p1win_jmp:
 
 start_game_hit2:
     ljmp checkfreq2
+    Set_Cursor(1, 15)
+    Display_BCD(p1points)
+    Set_Cursor(2, 15)
+    Display_BCD(p2points)
     jb p2_press, start_game_hit1
     Wait_Milli_Seconds(#50)
     jb p2_press, start_game_hit1
@@ -330,6 +342,10 @@ p2win_jmp:
 
 start_game_nohit1:
     ljmp checkfreq1
+    Set_Cursor(1, 15)
+    Display_BCD(p1points)
+    Set_Cursor(2, 15)
+    Display_BCD(p2points)
     jb p1_press, start_game_nohit2
     Wait_Milli_Seconds(#50)
     jb p1_press, start_game_nohit2
@@ -365,6 +381,10 @@ start_jmpsub2:
 
 start_game_nohit2:
     ljmp checkfreq2
+    Set_Cursor(1, 15)
+    Display_BCD(p1points)
+    Set_Cursor(2, 15)
+    Display_BCD(p2points)
     jb p2_press, start_game_nohit1
     Wait_Milli_Seconds(#50)
     jb p2_press, start_game_nohit1
