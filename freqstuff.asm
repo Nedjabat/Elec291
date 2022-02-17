@@ -110,13 +110,11 @@ InitTimer2:
 synch1:
 	mov a, T2ov+1
 	anl a, #0xfe
-	jnz no_signal ; If the count is larger than 0x01ffffffff*45ns=1.16s, we assume there is no signal
 ;	jnz no_signal ; If the count is larger than 0x01ffffffff*45ns=1.16s, we assume there is no signal
     jb P0.0, synch1
 synch2:    
 	mov a, T2ov+1
 	anl a, #0xfe
-	jnz no_signal
 ;	jnz no_signal
     jnb P0.0, synch2
     
@@ -125,12 +123,12 @@ synch2:
 	orl a, TH2
 	orl a, T2ov+0
 	orl a, T2ov+1
-	jz no_signal
 ;	jz no_signal
 	; Using integer math, convert the period to frequency:
 	mov x+0, TL2
 	mov x+1, TH2
-@ -345,13 +444,13 @@ skip_this:
+
+ skip_this:
 	Load_y(45) ; One clock pulse is 1/22.1184MHz=45.21123ns
 	lcall mul32
 	
