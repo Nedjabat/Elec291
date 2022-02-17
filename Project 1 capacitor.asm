@@ -168,14 +168,12 @@ MyProgram:
     mov seed+3, TL2
     clr TR0
     clr TR2
-    lcall Timer0_Init1
     ljmp loop
 loop:
     Set_Cursor(1, 11)
     Display_BCD(p1points)
     Set_Cursor(2, 11)
     Display_BCD(p2points)
-    setb TR0
     jb START_BUTTON, start_game
     Wait_Milli_Seconds(#50)
     jb START_BUTTON, start_game
@@ -197,11 +195,13 @@ start_game:
 
 lose_tone:
     ;ljmp play_lose
+    lcall Timer0_Init1
     setb TR0
     ljmp start_game_nohit1
 win_tone: 
     ;ljmp play_win
-    setb TR1
+    lcall Timer0_Init1
+    setb TR0
     ljmp start_game_hit1
     
 
@@ -210,6 +210,7 @@ start_game_hit1:
     Wait_Milli_Seconds(#50)
     jb P1_BUTTON, start_game_hit2
     jnb P1_BUTTON, $
+    clr TR0
     clr a 
     mov a, p1points
     add a, #0x01
@@ -226,6 +227,7 @@ start_game_hit2:
     Wait_Milli_Seconds(#50)
     jb P2_BUTTON, start_game_hit1
     jnb P2_BUTTON, $
+    clr TR0
     clr a 
     mov a, p2points
     add a, #0x01
@@ -242,6 +244,7 @@ start_game_nohit1:
     Wait_Milli_Seconds(#50)
     jb P1_BUTTON, start_game_nohit2
     jnb P1_BUTTON, $
+    clr TR0
     clr a 
     mov a, p1points
     cjne a, #0x00, start_jmp
@@ -259,6 +262,7 @@ start_game_nohit2:
     Wait_Milli_Seconds(#50)
     jb P2_BUTTON, start_game_nohit1
     jnb P2_BUTTON, $
+    clr TR0
     clr a 
     mov a, p2points
     cjne a, #0x00, start_jmp
