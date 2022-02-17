@@ -8,11 +8,11 @@ P1_BUTTON		equ	P2.4
 P2_BUTTON	    equ	P2.6
 
 CLK           EQU 22118400
-TIMER0_RATE   EQU 2048     ; 2048Hz squarewave (peak amplitude of CEM-1203 speaker)
-TIMER0_RELOAD EQU ((65536-(CLK/TIMER0_RATE)))
-TIMER1_RATE   EQU 4000                 ;2000Hz frequency lose frequency
+TIMER1_RATE   EQU 2048     ; 2048Hz squarewave (peak amplitude of CEM-1203 speaker)
+TIMER1_RELOAD EQU ((65536-(CLK/TIMER0_RATE)))
+TIMER1_RATE1   EQU 4000                 ;2000Hz frequency lose frequency
 TIMER2_RATE   EQU 4200                 ;2100Hz frequency win frequency
-TIMER1_RELOAD EQU ((65536-(CLK/TIMER1_RATE)))
+TIMER1_RELOAD1 EQU ((65536-(CLK/TIMER1_RATE)))
 TIMER2_RELOAD EQU ((65536-(CLK/TIMER2_RATE)))
 
 org 0000H
@@ -62,19 +62,19 @@ $include(LCD_4bit.inc) ; A library of LCD related functions and utility macros
 $include(math32.inc)
 $LIST
 
-Timer0_Init:
+Timer1_Init:
 	mov a, TMOD
 	anl a, #0xf0 ; Clear the bits for timer 0
 	orl a, #0x01 ; Configure timer 0 as 16-timer
 	mov TMOD, a
-	mov TH0, #high(TIMER0_RELOAD)
-	mov TL0, #low(TIMER0_RELOAD)
+	mov TH1, #high(TIMER1_RELOAD)
+	mov TL1, #low(TIMER1_RELOAD)
 	; Set autoreload value
-	mov RH0, #high(TIMER0_RELOAD)
-	mov RL0, #low(TIMER0_RELOAD)
+	mov RH1, #high(TIMER1_RELOAD)
+	mov RL1, #low(TIMER1_RELOAD)
 	; Enable the timer and interrupts
-    setb ET0  ; Enable timer 0 interrupt
-    clr TR0  ; Start timer 0
+    setb ET1  ; Enable timer 0 interrupt
+    clr TR1  ; Start timer 0
 	ret
 
 ;---------------------------------;
@@ -82,24 +82,24 @@ Timer0_Init:
 ; every 1/4096Hz to generate a    ;
 ; 2048 Hz square wave at pin P1.1 ;
 ;---------------------------------;
-Timer0_ISR:
+Timer1_ISR:
 	;clr TF0  ; According to the data sheet this is done for us already.
 	cpl SOUND_OUT ; Connect speaker to P1.1!
 	reti
 
-Timer0_Init1:
+Timer1_Init1:
 	mov a, TMOD
 	anl a, #0xf0 ; Clear the bits for timer 0
 	orl a, #0x01 ; Configure timer 0 as 16-timer
 	mov TMOD, a
-	mov TH0, #high(TIMER1_RELOAD)
-	mov TL0, #low(TIMER1_RELOAD)
+	mov TH1, #high(TIMER1_RELOAD1)
+	mov TL1, #low(TIMER1_RELOAD1)
 	; Set autoreload value
-	mov RH0, #high(TIMER1_RELOAD)
-	mov RL0, #low(TIMER1_RELOAD)
+	mov RH1, #high(TIMER1_RELOAD1)
+	mov RL1, #low(TIMER1_RELOAD1)
 	; Enable the timer and interrupts
-    setb ET0  ; Enable timer 0 interrupt
-    clr TR0  ; Start timer 0
+    setb ET1  ; Enable timer 0 interrupt
+    clr TR1  ; Start timer 0
 	ret
 
 ;---------------------------------;
@@ -107,7 +107,7 @@ Timer0_Init1:
 ; every 1/4096Hz to generate a    ;
 ; 2048 Hz square wave at pin P1.1 ;
 ;---------------------------------;
-Timer0_ISR1:
+Timer1_ISR1:
 	;clr TF0  ; According to the data sheet this is done for us already.
 	cpl SOUND_OUT ; Connect speaker to P1.1!
 	reti
@@ -151,15 +151,11 @@ wait_random:
     ret
 
 MyProgram:
- ;   lcall Timer0_Init
-    ;lcall Timer2_Init
     Set_Cursor(1, 1)
     Send_Constant_String(#Initial_Message)
     Set_Cursor(2, 1)
     Send_Constant_String(#Initial_Message2)
     setb EA
-    clr SOUND_OUT
-    setb TR0
     jb P4.5, $
     mov seed+0, TH2
     mov seed+1, #0x01
@@ -194,12 +190,12 @@ start_game:
 
 lose_tone:
     ;ljmp play_lose
-    lcall Timer0_Init1
+    lcall Timer1_Init
     clr TR0
     ljmp start_game_nohit1
 win_tone: 
     ;ljmp play_win
-    lcall Timer0_Init1
+    lcall Timer1_Init1
     clr TR0
     ljmp start_game_hit1
     
