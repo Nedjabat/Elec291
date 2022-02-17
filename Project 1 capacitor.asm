@@ -107,7 +107,7 @@ Timer1_Init:
 	mov RL1, #low(TIMER1_RELOAD)
 	; Enable the timer and interrupts
     setb ET1  ; Enable timer 0 interrupt
-    clr TR1  ; Start timer 0
+    setb TR1  ; Start timer 0
 	ret
 
 ;---------------------------------;
@@ -132,7 +132,7 @@ Timer1_Init1:
 	mov RL1, #low(TIMER1_RELOAD1)
 	; Enable the timer and interrupts
     setb ET1  ; Enable timer 0 interrupt
-    clr TR1  ; Start timer 0
+    setb TR1  ; Start timer 0
 	ret
 
 ;---------------------------------;
@@ -202,6 +202,7 @@ wait_random:
     ret
 
 MyProgram:
+    mov SP, #0x7F
     Set_Cursor(1, 1)
     Send_Constant_String(#Initial_Message)
     Set_Cursor(2, 1)
@@ -243,15 +244,11 @@ start_game:
 
 lose_tone:
     ;ljmp play_lose
-    Set_Cursor(1, 15)
-    Display_BCD(p1points)
     lcall Timer1_Init
     clr TR1
     ljmp start_game_nohit1
 win_tone: 
     ;ljmp play_win
-    Set_Cursor(1, 15)
-    Display_BCD(p1points)
     lcall Timer1_Init1
     clr TR1
     ljmp start_game_hit1
