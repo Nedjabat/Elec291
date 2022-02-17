@@ -157,15 +157,14 @@ MyProgram:
     Send_Constant_String(#Initial_Message)
     Set_Cursor(2, 1)
     Send_Constant_String(#Initial_Message2)
-    mov p1points, #0x00
-    mov p2points, #0x00
     setb EA
-    setb TR0
     jb P4.5, $
     mov seed+0, TH2
     mov seed+1, #0x01
     mov seed+2, #0x87
     mov seed+3, TL2
+    mov p1points, #0x00
+    mov p2points, #0x00
     clr TR0
     clr TR2
     ljmp loop
