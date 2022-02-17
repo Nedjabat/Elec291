@@ -229,16 +229,12 @@ loop:
 start_game:
     clr p1_press
     clr p2_press
-    ;Set_Cursor(1, 11)
-    ;Display_BCD(p1points)
-    ;Set_Cursor(2, 11)
-    ;Display_BCD(p2points)
     lcall random
+    lcall wait_random
     Set_Cursor(1, 11)
     Display_BCD(p1points)
     Set_Cursor(2, 11)
     Display_BCD(p2points)
-    lcall wait_random
     mov a, seed+1
     mov c, acc.3
     ;mov HLbit, c
@@ -247,11 +243,15 @@ start_game:
 
 lose_tone:
     ;ljmp play_lose
+    Set_Cursor(1, 15)
+    Display_BCD(p1points)
     lcall Timer1_Init
     clr TR1
     ljmp start_game_nohit1
 win_tone: 
     ;ljmp play_win
+    Set_Cursor(1, 15)
+    Display_BCD(p1points)
     lcall Timer1_Init1
     clr TR1
     ljmp start_game_hit1
