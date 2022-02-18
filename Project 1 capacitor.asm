@@ -233,6 +233,10 @@ loop:
     ljmp loop
 
 start_game:
+    Set_Cursor(1, 11)
+    Display_BCD(p1points)
+    Set_Cursor(2, 11)
+    Display_BCD(p2points)
     clr p1_press
     clr p2_press
     lcall random
@@ -280,9 +284,9 @@ freq2_press:
 
 start_game_hit1:
     ljmp checkfreq1
-    Set_Cursor(1, 15)
+    Set_Cursor(1, 11)
     Display_BCD(p1points)
-    Set_Cursor(2, 15)
+    Set_Cursor(2, 11)
     Display_BCD(p2points)
     jb p1_press, start_game_hit2
     Wait_Milli_Seconds(#50)
@@ -308,9 +312,9 @@ p1win_jmp:
 
 start_game_hit2:
     ljmp checkfreq2
-    Set_Cursor(1, 15)
+    Set_Cursor(1, 11)
     Display_BCD(p1points)
-    Set_Cursor(2, 15)
+    Set_Cursor(2, 11)
     Display_BCD(p2points)
     jb p2_press, start_game_hit1_jmp
     Wait_Milli_Seconds(#50)
@@ -348,13 +352,11 @@ start_game_nohit1:
     lcall x_eq_y
     jb mf, start_game_jmp
     mov counter, X ; counter+
-    
     jb p1_press, start_game_nohit2
     Wait_Milli_Seconds(#50)
     jb p1_press, start_game_nohit2
     jnb p1_press, $
     clr TR1
-
     clr a 
     mov a, p1points
     cjne a, #0x00, start_jmpsub1
