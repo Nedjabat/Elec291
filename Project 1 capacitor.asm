@@ -152,7 +152,21 @@ Timer2_ISR_done:
 ; every 1/4096Hz to generate a    ;
 ; 2048 Hz square wave at pin P1.1 ;
 ;---------------------------------;
-
+Left_blank mac
+	mov a, %0
+	anl a, #0xf0
+	swap a
+	jz Left_blank_%M_a
+	ljmp %1
+Left_blank_%M_a:
+	Display_char(#' ')
+	mov a, %0
+	anl a, #0x0f
+	jz Left_blank_%M_b
+	ljmp %1
+Left_blank_%M_b:
+	Display_char(#' ')
+endmac
 
 Wait1s:
     mov R2, #176
@@ -184,6 +198,100 @@ wait_random:
     Wait_Milli_Seconds(seed+2)
     Wait_Milli_Seconds(seed+3)
     ret
+movtox:
+	; 5th digit:
+    mov a, R2
+    anl a, #0FH
+    orl a, #'0' ; convert to ASCII
+    mov bcd+4, #0
+    mov bcd+3, #0
+    mov bcd+2, R2
+	;lcall ?WriteData
+	; 4th digit:
+    mov a, R1
+    swap a
+    anl a, #0FH
+    orl a, #'0' ; convert to ASCII
+	;lcall ?WriteData
+	; 3rd digit:
+    mov a, R1
+    anl a, #0FH
+    orl a, #'0' ; convert to ASCII
+    mov bcd+1, R1
+	;lcall ?WriteData
+	; 2nd digit:
+    mov a, R0
+    swap a
+    anl a, #0FH
+    orl a, #'0' ; convert to ASCII
+    
+	;lcall ?WriteData
+	; 1st digit:
+    mov a, R0
+    anl a, #0FH
+    orl a, #'0' ; convert to ASCII
+    mov bcd+0, R0
+	;lcall ?WriteData
+    
+    ret
+
+Display_10_digit_BCD:
+	Set_Cursor(2, 1)
+	Display_BCD(bcd+4)
+	Display_BCD(bcd+3)
+	Display_BCD(bcd+2)
+	Display_BCD(bcd+1)
+	Display_BCD(bcd+0)
+	; Replace all the zeros to the left with blanks
+	Set_Cursor(2, 1)
+	Left_blank(bcd+4, skip_blank)
+	Left_blank(bcd+3, skip_blank)
+	Left_blank(bcd+2, skip_blank)
+	Left_blank(bcd+1, skip_blank)
+    Left_blank(bcd+0, skip_blank)
+	mov a, bcd+0
+	anl a, #0f0h
+	swap a
+	jnz skip_blank
+	Display_char(#' ')
+skip_blank:
+	ret
+
+hex2bcd5:
+	clr a
+    mov R0, #0  ;Set BCD result to 00000000 
+    mov R1, #0
+    mov R2, #0
+    mov R3, #16 ;Loop counter.
+
+hex2bcd_loop5:
+    mov a, TL2 ;Shift TH0-TL0 left through carry
+    rlc a
+    mov TL2, a
+    
+    mov a, TH2
+    rlc a
+    mov TH2, a
+      
+	; Perform bcd + bcd + carry
+	; using BCD numbers
+	mov a, R0
+	addc a, R0
+	da a
+	mov R0, a
+	
+	mov a, R1
+	addc a, R1
+	da a
+	mov R1, a
+	
+	mov a, R2
+	addc a, R2
+	da a
+	mov R2, a
+	
+	djnz R3, hex2bcd_loop5
+	ret
 
 MyProgram:
     mov SP, #0x7F
@@ -213,8 +321,9 @@ loop:
     lcall Wait1s ; Wait one second
     clr TR0 
     Set_Cursor(1, 11)
-	lcall hex2bcd_stuff
-    lcall DisplayBCD_LCD_stuff
+	lcall hex2bcd5
+    lcall movtox
+    lcall Display_10_digit_BCD
 
 
     
