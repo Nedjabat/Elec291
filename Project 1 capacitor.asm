@@ -298,17 +298,15 @@ forever:
     Display_BCD(p1points)
     Set_Cursor(2, 9)
     Display_BCD(p2points)
-    jb START_BUTTON, start_game
-    Wait_Milli_Seconds(#50)
-    jb START_BUTTON, start_game
-    jnb START_BUTTON, $
-	; Convert the result to BCD and display on LCD
-	Set_Cursor(2, 11)
+    Set_Cursor(2, 11)
 	lcall hex2bcd1
     lcall DisplayBCD_LCD
+    ljmp start_game
+	; Convert the result to BCD and display on LCD
+	
     sjmp forever ;  Repeat! 
 
-    start_game:
+start_game:
     Set_Cursor(1, 9)
     Display_BCD(p1points)
     Set_Cursor(2, 9)
