@@ -294,9 +294,9 @@ forever:
     lcall Wait1s ; Wait one second
     clr TR2 ; Stop counter 2, TH2-TL2 has the frequency
 
-    Set_Cursor(1, 11)
+    Set_Cursor(1, 9)
     Display_BCD(p1points)
-    Set_Cursor(2, 11)
+    Set_Cursor(2, 9)
     Display_BCD(p2points)
     jb START_BUTTON, start_game
     Wait_Milli_Seconds(#50)
@@ -309,17 +309,17 @@ forever:
     sjmp forever ;  Repeat! 
 
     start_game:
-    Set_Cursor(1, 11)
+    Set_Cursor(1, 9)
     Display_BCD(p1points)
-    Set_Cursor(2, 11)
+    Set_Cursor(2, 9)
     Display_BCD(p2points)
     clr p1_press
     clr p2_press
     lcall random
     lcall wait_random
-    Set_Cursor(1, 11)
+    Set_Cursor(1, 9)
     Display_BCD(p1points)
-    Set_Cursor(2, 11)
+    Set_Cursor(2, 9)
     Display_BCD(p2points)
     mov a, seed+1
     mov c, acc.3
@@ -359,9 +359,9 @@ freq2_press:
     ljmp start_game_hit2
 
 start_game_hit1:
-    jb p1_press, checkfreq2
+    jb p1_press, forever_jmp
     Wait_Milli_Seconds(#50)
-    jb p1_press, checkfreq2
+    jb p1_press, forever_jmp
     jnb p1_press, $
     clr TR1
     clr a 
@@ -373,7 +373,8 @@ start_game_hit1:
     clr p1_press
     clr p2_press
     ljmp p1win_jmp
-    
+forever_jmp:
+    ljmp forever
 p1win_jmp:
     clr p1_press
     clr p2_press
