@@ -236,14 +236,14 @@ movtox:
     ret
 
 Display_10_digit_BCD:
-	Set_Cursor(2, 1)
+	Set_Cursor(2, 13)
 	Display_BCD(bcd+4)
 	Display_BCD(bcd+3)
 	Display_BCD(bcd+2)
 	Display_BCD(bcd+1)
 	Display_BCD(bcd+0)
 	; Replace all the zeros to the left with blanks
-	Set_Cursor(2, 1)
+	Set_Cursor(2, 13)
 	Left_blank(bcd+4, skip_blank)
 	Left_blank(bcd+3, skip_blank)
 	Left_blank(bcd+2, skip_blank)
@@ -368,6 +368,19 @@ win_tone:
     ljmp checkfreq1
     
 checkfreq1:
+    clr TR0 ; Stop counter 2
+    clr a
+    mov TL0, a
+    mov TH0, a
+    clr TF0
+    setb TR0 ; Start counter 2
+    lcall Wait1s ; Wait one second
+    clr TR0 
+    Set_Cursor(1, 11)
+	lcall hex2bcd5
+    lcall movtox
+    lcall Display_10_digit_BCD
+
     load_y(4720)
     mov x, freq1
     lcall x_lteq_y
@@ -390,8 +403,20 @@ freq2_press:
     ljmp start_game_hit2
 
 start_game_hit1:
-    jb p1_press, checkfreq2
+    clr TR0 ; Stop counter 2
+    clr a
+    mov TL0, a
+    mov TH0, a
+    clr TF0
+    setb TR0 ; Start counter 2
+    lcall Wait1s ; Wait one second
+    clr TR0 
+    Set_Cursor(1, 11)
+	lcall hex2bcd5
+    lcall movtox
+    lcall Display_10_digit_BCD
 
+    jb p1_press, checkfreq2
     Wait_Milli_Seconds(#50)
     jb p1_press, checkfreq2
     jnb p1_press, $
@@ -414,7 +439,19 @@ p1win_jmp:
     ljmp p1win
 
 start_game_hit2:
-    ljmp checkfreq2
+    clr TR0 ; Stop counter 2
+    clr a
+    mov TL0, a
+    mov TH0, a
+    clr TF0
+    setb TR0 ; Start counter 2
+    lcall Wait1s ; Wait one second
+    clr TR0 
+    Set_Cursor(1, 11)
+	lcall hex2bcd5
+    lcall movtox
+    lcall Display_10_digit_BCD
+
     jb p2_press, checkfreq1
     Wait_Milli_Seconds(#50)
     jb p2_press, checkfreq1_jmp
