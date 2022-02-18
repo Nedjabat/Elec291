@@ -6,10 +6,11 @@ $LIST
 START_BUTTON   	equ P4.5
 P1_BUTTON		equ	P2.4
 P2_BUTTON	    equ	P2.6
+UPDOWN        	equ P0.1
 
 CLK           EQU 22118400
-TIMER0_RATE   EQU 4096     ; 2048Hz squarewave (peak amplitude of CEM-1203 speaker)
-TIMER0_RELOAD EQU ((65536-(CLK/TIMER0_RATE)))
+TIMER0_RATE   EQU 100     ; 1000Hz, for a timer tick of 1ms
+TIMER0_RELOAD EQU ((65536-(CLK/TIMER2_RATE)))
 TIMER1_RATE   EQU 4200     ; 2048Hz squarewave (peak amplitude of CEM-1203 speaker)
 TIMER1_RELOAD EQU ((65536-(CLK/TIMER1_RATE)))
 TIMER1_RATE1   EQU 4000  
@@ -20,7 +21,8 @@ TIMER2_RELOAD EQU ((65536-(CLK/TIMER2_RATE)))
 org 0000H
    ljmp MyProgram
 
-
+org 0x000B
+	ljmp Timer0_ISR
 ; Timer/Counter 1 overflow interrupt vector (not used in this code)
 org 0x001B
 	ljmp Timer1_ISR
@@ -31,6 +33,8 @@ x:   ds 4
 y:   ds 4
 seed: ds 4  
 bcd: ds 5
+Count1ms:     ds 2 
+seconds:  ds 1 ;
 p1points: ds 1
 p2points: ds 1
 freq1: ds 4
@@ -45,6 +49,8 @@ BSEG
 mf: dbit 1
 p1_press: dbit 1
 p2_press: dbit 1
+second_high: dbit 1
+half_seconds_flag: dbit 1
 
 cseg
 ; These 'equ' must match the hardware wiring
@@ -60,8 +66,8 @@ SOUND_OUT equ P1.1
 Initial_Message:  db 'Player1:          ', 0
 Initial_Message2: db 'Player2:          ', 0
 
-Winner1_message1: db 'Winner!:D', 0
-Winner1_message2: db 'Loser:P', 0
+Winner1_message1: db 'Win!:D', 0
+Winner1_message2: db 'Lose:P', 0
 
 Winner2_message1: db 'Loser:P', 0
 Winner2_message2: db 'Winner!:D', 0
@@ -114,7 +120,89 @@ Timer1_Init1:
     setb ET1  ; Enable timer 0 interrupt
     setb TR1  ; Start timer 0
 	ret
+Timer2_Init:
 
+	mov T2CON, #0 ; Stop timer/counter.  Autoreload mode.
+	mov TH2, #high(TIMER2_RELOAD)
+	mov TL2, #low(TIMER2_RELOAD)
+	; Set the reload value
+	mov RCAP2H, #high(TIMER2_RELOAD)
+	mov RCAP2L, #low(TIMER2_RELOAD)
+	; Init One millisecond interrupt counter.  It is a 16-bit variable made with two 8-bit parts
+	clr a
+	mov Count1ms+0, a
+	mov Count1ms+1, a
+	; Enable the timer and interrupts
+    setb ET2  ; Enable timer 2 interrupt
+    setb TR2  ; Enable timer 2
+	ret
+
+
+;---------------------------------;
+; ISR for timer 2                 ;
+;---------------------------------;
+Timer0_Init:
+
+	mov TCON, #0 ; Stop timer/counter.  Autoreload mode.
+	mov TH0, #high(TIMER0_RELOAD)
+	mov TL0, #low(TIMER0_RELOAD)
+	; Set the reload value
+	; Init One millisecond interrupt counter.  It is a 16-bit variable made with two 8-bit parts
+	clr a
+	mov Count1ms+0, a
+	mov Count1ms+1, a
+	; Enable the timer and interrupts
+    setb ET0  ; Enable timer 2 interrupt
+    setb TR0  ; Enable timer 2
+	ret
+
+;---------------------------------;
+; ISR for timer 2                 ;
+;---------------------------------;
+Timer0_ISR:
+	clr TF0  ; Timer 2 doesn't clear TF2 automatically. Do it in ISR ; To check the interrupt rate with oscilloscope. It must be precisely a 1 ms pulse.
+	
+	; The two registers used in the ISR must be saved in the stack
+	push acc
+	push psw
+	
+	; Increment the 16-bit one mili second counter
+	inc Count1ms+0    ; Increment the low 8-bits first
+	mov a, Count1ms+0 ; If the low 8-bits overflow, then increment high 8-bits
+	jnz Inc_Done
+	inc Count1ms+1
+Inc_Done:
+	; Check if half second has passed
+	mov a, Count1ms+0
+	cjne a, #low(1000), Timer0_ISR_done ; Warning: this instruction changes the carry flag!
+	mov a, Count1ms+1
+	cjne a, #high(1000), Timer0_ISR_done
+	
+	; 500 milliseconds have passed.  Set a flag so the main program knows
+	setb half_seconds_flag ; Let the main program know half second had passed
+	cpl TR0 ; Enable/disable timer/counter 0. This line creates a beep-silence-beep-silence sound.
+	; Reset to zero the milli-seconds counter, it is a 16-bit variable
+	clr a
+	mov Count1ms+0, a
+	mov Count1ms+1, a
+	; Increment the BCD counter
+	mov a, seconds
+	jnb UPDOWN, Timer0_ISR_decrement
+	add a, #0x01
+	sjmp Timer0_ISR_da
+Timer0_ISR_decrement:
+	add a, #0x99 ; Adding the 10-complement of -1 is like subtracting 1.
+Timer0_ISR_da:
+	da a ; Decimal adjust instruction.  Check datasheet for more details!
+	mov seconds, a
+    cjne a, #0x60, Timer0_ISR_done
+    setb second_high
+    clr a
+    mov seconds, a
+Timer0_ISR_done:
+	pop psw
+	pop acc
+	reti
 ;---------------------------------;
 ; ISR for timer 0.  Set to execute;
 ; every 1/4096Hz to generate a    ;
@@ -142,14 +230,6 @@ InitTimer2:
     setb P2.1  ; P1.0 is connected to T2.  Make sure it can be used as input.
     ret
 
-InitTimer0:
-    mov TCON, #0b_0001_0001
-	;Stop timer/counter.  Set as counter (clock input is pin T2).
-	; Set the reload value on overflow to zero (just in case is not zero)
-	mov RH0, #0
-	mov RL0, #0
-    setb P0.0 ; P1.0 is connected to T2.  Make sure it can be used as input.
-    ret
 
 ;Converts the hex number in TH2-TL2 to BCD in R2-R1-R0
 
@@ -290,12 +370,14 @@ MyProgram:
     mov SP, #7FH
     lcall InitTimer2
     lcall LCD_4BIT
-    lcall InitTimer0
+    lcall Timer0_Init
     Set_Cursor(1, 1)
     Send_Constant_String(#Initial_Message)
     Set_Cursor(2, 1)
     Send_Constant_String(#Initial_Message2)
     setb EA
+    setb TR0
+    setb half_seconds_flag
     jb P4.5, $
     mov seed+0, TH2
     mov seed+1, #0x01
@@ -395,13 +477,11 @@ start_game:
     mov a, seed+1
     mov c, acc.3
     ;mov HLbit, c
-    ;jc lose_tone
-    ljmp win_tone
+    ljmp lose_tone
+    jc win_tone
 
 lose_tone:
     lcall Timer1_Init
-    load_x(0)
-    mov counter, x
     ljmp start_game_nohit1
 win_tone: 
     lcall Timer1_Init1
@@ -419,13 +499,13 @@ freq1_nopress:
     ret
 
 checkfreq2:
-    load_y(4655)
+    load_y(4650)
     lcall x_gteq_y
-    jbc mf, freq2_nopress
+    jbc mf, freq2_press
     setb p2_press
     ret
 
-freq2_nopress:
+freq2_press:
     clr p2_press
     ret
 
@@ -484,30 +564,29 @@ p2win_jmp:
     ljmp p2win
 
 start_game_nohit1:
-    ljmp checkfreq1
-    Set_Cursor(2, 15)
-    Display_BCD(counter)
-    mov y, counter
-    load_x(1)
-    lcall add32
-    load_y(1000)
-    lcall x_eq_y
-    jb mf, start_game_jmp
-    mov counter, x ; counter+
-    jb p1_press, start_game_nohit2
-    Wait_Milli_Seconds(#50)
-    jb p1_press, start_game_nohit2
-    jnb p1_press, $
+    lcall forever1
+    lcall movtox
+    lcall bcd2hex
+    lcall checkfreq1
+    lcall hex2bcd
+    lcall DisplayBCD_LCD
+    setb TR0
+    jbc p1_press, start_game_nohit2
+    jbc half_seconds_flag, start_game_jmp
     clr TR1
+    clr TR0
+    clr half_seconds_flag
     clr a 
     mov a, p1points
     cjne a, #0x00, start_jmpsub1
     ljmp start_game
 
 start_game_jmp:
+    clr TR0
     ljmp start_game
 
 start_jmpsub1:
+    
     mov x, a
     Load_y(1)
     lcall sub32
@@ -517,32 +596,26 @@ start_jmpsub1:
     clr a
     setb p1_press
     setb p2_press
-
+    ljmp start_game
 
 start_game_nohit2:
-    ljmp checkfreq2
-    Set_Cursor(2, 15)
-    Display_BCD(counter)
-    
-    mov y, counter
-    load_x(1)
-    lcall add32
-    load_y(1000)
-    lcall x_eq_y
-    jb mf, start_game_jmp
-    mov counter, X ; counter+
-
-    jb p2_press, start_game_nohit1_jmp
-    Wait_Milli_Seconds(#50)
-    jb p2_press, start_game_nohit1_jmp
-    jnb p2_press, $
+    lcall forever2
+    lcall movtox
+    lcall bcd2hex
+    lcall checkfreq2
+    lcall hex2bcd
+    lcall DisplayBCD_LCD
+    setb TR0
+    jbc p2_press, start_game_nohit1
+    jbc half_seconds_flag, start_game_jmp
     clr TR1
+    clr TR0
+    clr half_seconds_flag
     clr a 
     mov a, p2points
     cjne a, #0x00, start_jmpsub2
     ljmp start_jmp
     
-
 start_jmpsub2:
     mov x, a
     Load_y(1)
@@ -565,9 +638,9 @@ start_jmp:
 p1win:
     setb p1_press
     setb p2_press
-    Set_Cursor(1, 9)
+    Set_Cursor(1, 11)
     Send_Constant_String(#Winner1_message1)
-    Set_Cursor(2, 9)
+    Set_Cursor(2, 11)
     Send_Constant_String(#Winner1_message2)
     Wait_Milli_Seconds(#5)
     Set_Cursor(1,1)
@@ -584,10 +657,10 @@ p1win_jmp2:
 p2win: 
     setb p1_press
     setb p2_press
-    Set_Cursor(1, 9)
-    Send_Constant_String(#Winner2_message1)
-    Set_Cursor(2,9)
-    Send_Constant_String(#Winner2_message2)
+    Set_Cursor(1, 11)
+    Send_Constant_String(#Winner1_message2)
+    Set_Cursor(2,11)
+    Send_Constant_String(#Winner1_message1)
     Wait_Milli_Seconds(#50)
     Set_Cursor(1,1)
     Send_Constant_String(#Playagain)
