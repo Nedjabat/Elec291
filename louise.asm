@@ -42,7 +42,6 @@ T0ov: ds 2
 T2ov: ds 2
 freq1: ds 4
 freq2: ds 4
-
 counter: ds 4
 
 BSEG
@@ -78,20 +77,13 @@ $include(LCD_4bit.inc) ; A library of LCD related functions and utility macros
 $include(math32.inc)
 $LIST
 
-Timer0_Init:
-	mov a, TMOD
-	anl a, #0xf0 ; 11110000 Clear the bits for timer 0
-	orl a, #0x01 ; 00000001 Configure timer 0 as 16-timer
-	mov TMOD, a
-	mov TH0, #high(TIMER0_RELOAD)
-	mov TL0, #low(TIMER0_RELOAD)
-	; Set autoreload value
-	mov RH0, #high(TIMER0_RELOAD)
-	mov RL0, #low(TIMER0_RELOAD)
-	; Enable the timer and interrupts
-    setb ET0  ; Enable timer 0 interrupt
-    setb TR0  ; Start timer 0
-	ret
+InitTimer0:
+	mov T0CON, #0b_0000_0010 ; Stop timer/counter.  Set as counter (clock input is pin T2).
+	; Set the reload value on overflow to zero (just in case is not zero)
+	mov RCAP0H, #0
+	mov RCAP0L, #0
+    setb P1.0 ; P1.0 is connected to T2.  Make sure it can be used as input.
+    ret
 
 Timer0_ISR:
 	clr TF0  ; Timer 2 doesn't clear TF2 automatically. Do it in ISR
@@ -213,6 +205,8 @@ MyProgram:
     Send_Constant_String(#Initial_Message)
     Set_Cursor(2, 1)
     Send_Constant_String(#Initial_Message2)
+    lcall InitTimer0
+    lcall InitTimer2
     setb EA
     jb P4.5, $
     mov seed+0, TH2
@@ -223,10 +217,27 @@ MyProgram:
     mov p2points, #0x00
     ljmp loop
 loop:
-    ;Set_Cursor(1, 11)
-    ;Display_BCD(p1points)
-    ;Set_Cursor(2, 11)
-    ;Display_BCD(p2points)
+
+    clr TR2 ; Stop counter 2
+    clr a
+    mov TL2, a
+    mov TH2, a
+    clr TF2
+    setb TR2 ; Start counter 2
+    lcall Wait1s ; Wait one second
+    clr TR2 
+    mov x, a
+    lcall hex2bcd
+    mov freq1, a
+    Set_Cursor(1,11)
+    Display_BCD(freq1)
+    
+
+
+    Set_Cursor(1, 11)
+    Display_BCD(p1points)
+    Set_Cursor(2, 11)
+    Display_BCD(p2points)
     jb START_BUTTON, start_game
     Wait_Milli_Seconds(#50)
     jb START_BUTTON, start_game
@@ -234,6 +245,10 @@ loop:
     ljmp loop
 
 start_game:
+    Set_Cursor(1, 11)
+    Display_BCD(p1points)
+    Set_Cursor(2, 11)
+    Display_BCD(p2points)
     clr p1_press
     clr p2_press
     lcall random
@@ -255,49 +270,43 @@ lose_tone:
     ljmp start_game_nohit1
 win_tone: 
     lcall Timer1_Init1
-    ljmp start_game_hit1
+    ljmp checkfreq1
     
 checkfreq1:
     load_y(4720)
-    ;if freq<4720
-    ;setb freq1flag
+    Display_BCD(freq1)
     mov x, freq1
     lcall x_lteq_y
-    jb mf, freq1_press
-    ret
+    jbc mf, freq1_press
+    ljmp start_game_hit1
 
 freq1_press:
     setb p1_press
-    ret
+    ljmp start_game_hit1
 
 checkfreq2:
     load_y(4720)
-    ;if freq<4720
-    ;setb freq1flag
+    Display_BCD(freq1)
     mov x, freq2
     lcall x_lteq_y
-    jb mf, freq2_press
-    ret
+    jbc mf, freq2_press
+    ljmp start_game_hit2
 
 freq2_press:
     setb p2_press
-    ret
+    ljmp start_game_hit2
 
 start_game_hit1:
-    ljmp checkfreq1
-    Set_Cursor(1, 15)
-    Display_BCD(p1points)
-    Set_Cursor(2, 15)
-    Display_BCD(p2points)
-    jb p1_press, start_game_hit2
+    jb p1_press, checkfreq2
+
     Wait_Milli_Seconds(#50)
-    jb p1_press, start_game_hit2
+    jb p1_press, checkfreq2
     jnb p1_press, $
     clr TR1
     clr a 
     mov a, p1points
     add a, #0x01
-    mov p2points, a
+    mov p1points, a
     cjne a, #0x05, start_jmp1
     clr a
     clr p1_press
@@ -313,13 +322,9 @@ p1win_jmp:
 
 start_game_hit2:
     ljmp checkfreq2
-    Set_Cursor(1, 15)
-    Display_BCD(p1points)
-    Set_Cursor(2, 15)
-    Display_BCD(p2points)
-    jb p2_press, start_game_hit1_jmp
+    jb p2_press, checkfreq1
     Wait_Milli_Seconds(#50)
-    jb p2_press, start_game_hit1_jmp
+    jb p2_press, checkfreq1_jmp
     jnb p2_press, $
     clr TR1
     clr a 
@@ -331,6 +336,8 @@ start_game_hit2:
     clr p2_press
     clr a
     ljmp p2win_jmp
+ checkfreq1_jmp:
+ ljmp checkfreq1
 start_game_hit1_jmp:
 	ljmp start_game_hit1
 	
@@ -344,10 +351,8 @@ p2win_jmp:
 
 start_game_nohit1:
     ljmp checkfreq1
-    Set_Cursor(1, 15)
-    Display_BCD(p1points)
     Set_Cursor(2, 15)
-    Display_BCD(p2points)
+    Display_BCD(counter)
     mov y, counter
     load_x(1)
     lcall add32
@@ -355,13 +360,11 @@ start_game_nohit1:
     lcall x_eq_y
     jb mf, start_game_jmp
     mov counter, X ; counter+
-    
     jb p1_press, start_game_nohit2
     Wait_Milli_Seconds(#50)
     jb p1_press, start_game_nohit2
     jnb p1_press, $
     clr TR1
-
     clr a 
     mov a, p1points
     cjne a, #0x00, start_jmpsub1
@@ -384,8 +387,6 @@ start_jmpsub1:
 
 start_game_nohit2:
     ljmp checkfreq2
-    Set_Cursor(1, 15)
-    Display_BCD(p1points)
     Set_Cursor(2, 15)
     Display_BCD(counter)
     
@@ -477,153 +478,8 @@ restart_game:
     mov p2points, #0x00
     ljmp start_game
 
-forever_0:
-    ; synchronize with rising edge of the signal applied to pin P0.0
-    clr TR0 ; Stop timer 2
-    mov TL0, #0
-    mov TH0, #0
-    mov T0ov+0, #0
-    mov T0ov+1, #0
-    clr TF0
-    setb TR2
-synch1_0:
-	mov a, T0ov+1
-	anl a, #0xfe
-;	jnz no_signal ; If the count is larger than 0x01ffffffff*45ns=1.16s, we assume there is no signal
-    jb P0.0, synch1_0
-synch2_0:    
-	mov a, T0ov+1
-	anl a, #0xfe
-;	jnz no_signal
-    jnb P0.0, synch2_0
-    
-    ; Measure the period of the signal applied to pin P0.0
-    clr TR0
-    mov TL0, #0
-    mov TH0, #0
-    mov T0ov+0, #0
-    mov T0ov+1, #0
-    clr TF0
-    setb TR0 ; Start timer 2
-measure1_0:
-	mov a, T0ov+1
-	anl a, #0xfe
-;	jnz no_signal 
-    jb P0.0, measure1_0
-  
-measure2_0:    
-	mov a, T0ov+1
-	anl a, #0xfe
-;	jnz no_signal
-    jnb P0.0, measure2_0
-    clr TR2 ; Stop timer 2, [T2ov+1, T2ov+0, TH2, TL2] * 45.21123ns is the period
+;freq1:
 
-	sjmp skip_this_0
-	
-
-;no_signal:	
-;	Set_Cursor(2, 1)
-;    Send_Constant_String(#No_Signal_Str)
-;    ljmp forever ; Repeat! 
-skip_this_0:
-
-	; Make sure [T2ov+1, T2ov+2, TH2, TL2]!=0
-	mov a, TL0
-	orl a, TH0
-	orl a, T0ov+0
-	orl a, T0ov+1
-;	jz no_signal
-	; Using integer math, convert the period to frequency:
-	mov x+0, TL0
-	mov x+1, TH0
-	mov x+2, T0ov+0
-	mov x+3, T0ov+1
-	Load_y(45) ; One clock pulse is 1/22.1184MHz=45.21123ns
-	lcall mul32
-	
-	mov freq1, x ;(frequency 1)
-
-    ljmp forever_0 ; Repeat! 
-    
-;-----------------------------------------------------------------
-
-;timer stuff to measure frequency
-;Initializes timer/counter 2 as a 16-bit timer (given code from lab 3)
-
-	
-;---------------------------------;
-; Hardware initialization         ;
-;---------------------------------;
-Initialize_All:
-    lcall InitTimer2
-    lcall LCD_4BIT ; Initialize LCD
-    setb EA
-	ret
-	
-forever:
-    ; synchronize with rising edge of the signal applied to pin P0.0
-    clr TR2 ; Stop timer 2
-    mov TL2, #0
-    mov TH2, #0
-    mov T2ov+0, #0
-    mov T2ov+1, #0
-    clr TF2
-    setb TR2
-synch1:
-	mov a, T2ov+1
-	anl a, #0xfe
-;	jnz no_signal ; If the count is larger than 0x01ffffffff*45ns=1.16s, we assume there is no signal
-    jb P0.0, synch1
-synch2:    
-	mov a, T2ov+1
-	anl a, #0xfe
-;	jnz no_signal
-    jnb P0.0, synch2
-    
-    ; Measure the period of the signal applied to pin P0.0
-    clr TR2
-    mov TL2, #0
-    mov TH2, #0
-    mov T2ov+0, #0
-    mov T2ov+1, #0
-    clr TF2
-    setb TR2 ; Start timer 2
-measure1:
-	mov a, T2ov+1
-	anl a, #0xfe
-;	jnz no_signal 
-    jb P0.0, measure1
-measure2:    
-	mov a, T2ov+1
-	anl a, #0xfe
-;	jnz no_signal
-    jnb P0.0, measure2
-    clr TR2 ; Stop timer 2, [T2ov+1, T2ov+0, TH2, TL2] * 45.21123ns is the period
-
-	sjmp skip_this
-;no_signal:	
-;	Set_Cursor(2, 1)
-;    Send_Constant_String(#No_Signal_Str)
-;    ljmp forever ; Repeat! 
-skip_this:
-
-	; Make sure [T2ov+1, T2ov+2, TH2, TL2]!=0
-	mov a, TL2
-	orl a, TH2
-	orl a, T2ov+0
-	orl a, T2ov+1
-;	jz no_signal
-	; Using integer math, convert the period to frequency:
-	mov x+0, TL2
-	mov x+1, TH2
-	mov x+2, T2ov+0
-	mov x+3, T2ov+1
-	Load_y(45) ; One clock pulse is 1/22.1184MHz=45.21123ns
-	lcall mul32
-	
-	mov freq2, x
-
-    ljmp forever ; Repeat! 
-
+   
 
 end

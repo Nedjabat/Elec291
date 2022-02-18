@@ -200,3 +200,29 @@ skip_this:
     
 
 end
+
+
+
+
+
+checkfreq1:
+    load_y(4720)
+    ;if freq<4720
+    ;setb freq1flag
+    mov x, freq1
+    lcall x_lteq_y
+    jb mf, freq1_press
+
+freq1_press:
+    setb p1_press
+
+checkfreq2:
+    load_y(4720)
+    ;if freq<4720
+    ;setb freq1flag
+    mov x, freq2
+    lcall x_lteq_y
+    jb mf, freq2_press
+
+freq2_press:
+    setb p2_press
