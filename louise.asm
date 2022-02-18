@@ -43,6 +43,8 @@ T2ov: ds 2
 freq1: ds 4
 freq2: ds 4
 counter: ds 4
+Period_A: ds 2
+Period_B: ds 2
 
 BSEG
 mf: dbit 1
