@@ -9,13 +9,13 @@ P2_BUTTON	    equ	P2.6
 UPDOWN        	equ P0.1
 
 CLK           EQU 22118400
-TIMER0_RATE   EQU 2000     ; 1000Hz, for a timer tick of 1ms
+TIMER0_RATE   EQU 100     ; 1000Hz, for a timer tick of 1ms
 TIMER0_RELOAD EQU ((65536-(CLK/TIMER2_RATE)))
-TIMER1_RATE   EQU 2000     ; 2048Hz squarewave (peak amplitude of CEM-1203 speaker)
+TIMER1_RATE   EQU 4200     ; 2048Hz squarewave (peak amplitude of CEM-1203 speaker)
 TIMER1_RELOAD EQU ((65536-(CLK/TIMER1_RATE)))
-TIMER1_RATE1   EQU 2000  
+TIMER1_RATE1   EQU 4000  
 TIMER1_RELOAD1 EQU ((65536-(CLK/TIMER1_RATE1)))               ;2000Hz frequency lose frequency
-TIMER2_RATE   EQU 2000                ;2100Hz frequency win frequency
+TIMER2_RATE   EQU 4200                 ;2100Hz frequency win frequency
 TIMER2_RELOAD EQU ((65536-(CLK/TIMER2_RATE)))
 
 org 0000H
@@ -143,6 +143,7 @@ Timer2_Init:
 ;---------------------------------;
 Timer0_Init:
 
+	;mov TCON, #0 ; Stop timer/counter.  Autoreload mode.
 	mov TH0, #high(TIMER0_RELOAD)
 	mov TL0, #low(TIMER0_RELOAD)
 	; Set the reload value
