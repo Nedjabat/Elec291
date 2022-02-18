@@ -232,17 +232,17 @@ loop:
     ljmp loop
 
 start_game:
-    Set_Cursor(1, 11)
+    Set_Cursor(1, 9)
     Display_BCD(p1points)
-    Set_Cursor(2, 11)
+    Set_Cursor(2, 9)
     Display_BCD(p2points)
     clr p1_press
     clr p2_press
     lcall random
     lcall wait_random
-    Set_Cursor(1, 11)
+    Set_Cursor(1, 9)
     Display_BCD(p1points)
-    Set_Cursor(2, 11)
+    Set_Cursor(2, 9)
     Display_BCD(p2points)
     mov a, seed+1
     mov c, acc.3
