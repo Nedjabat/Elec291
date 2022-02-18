@@ -319,12 +319,12 @@ forever1:
 start_game:
     clr p1_press
     clr p2_press
-    lcall random
-    lcall wait_random
     Set_Cursor(1, 9)
     Display_BCD(p1points)
     Set_Cursor(2, 9)
     Display_BCD(p2points)
+    lcall random
+    lcall wait_random
     mov a, seed+1
     mov c, acc.3
     ;mov HLbit, c
@@ -338,6 +338,7 @@ lose_tone:
     ljmp start_game_nohit1
 win_tone: 
     lcall Timer1_Init1
+    
     ljmp checkfreq1
     
 checkfreq1:
@@ -363,7 +364,7 @@ freq2_press:
     ljmp start_game_hit2
 
 start_game_hit1:
-    ljmp forever1
+    lcall forever1
     jb p1_press, checkfreq2
     Wait_Milli_Seconds(#50)
     jb p1_press, checkfreq2
@@ -385,7 +386,7 @@ p1win_jmp:
     ljmp p1win
 
 start_game_hit2:
-    ljmp forever1
+    lcall forever1
     jb p2_press, checkfreq1
     Wait_Milli_Seconds(#50)
     jb p2_press, checkfreq1
