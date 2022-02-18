@@ -342,6 +342,7 @@ win_tone:
     ljmp checkfreq1
     
 checkfreq1:
+    lcall forever1
     load_y(4720)
     mov x, freq1
     lcall x_lteq_y
@@ -353,6 +354,7 @@ freq1_press:
     ljmp start_game_hit1
 
 checkfreq2:
+    lcall forever1
     load_y(4720)
     mov x, freq2
     lcall x_lteq_y
@@ -384,12 +386,13 @@ p1win_jmp:
     clr p1_press
     clr p2_press
     ljmp p1win
-
+checkfreq1_jmp:
+    ljmp checkfreq1
 start_game_hit2:
     lcall forever1
-    jb p2_press, checkfreq1
+    jb p2_press, checkfreq1_jmp
     Wait_Milli_Seconds(#50)
-    jb p2_press, checkfreq1
+    jb p2_press, checkfreq1_jmp
     jnb p2_press, $
     clr TR1
     clr a 
