@@ -347,11 +347,11 @@ checkfreq1:
     mov x, freq1
     lcall x_lteq_y
     jbc mf, freq1_press
-    ljmp start_game_hit1
+    ret
 
 freq1_press:
     setb p1_press
-    ljmp start_game_hit1
+    ret
 
 checkfreq2:
     lcall forever1
@@ -359,18 +359,18 @@ checkfreq2:
     mov x, freq2
     lcall x_lteq_y
     jbc mf, freq2_press
-    ljmp start_game_hit2
+    ret
 
 freq2_press:
     setb p2_press
-    ljmp start_game_hit2
+    ret
 
 start_game_hit1:
     lcall forever1
-    Display_BCD(p1_press)
-    jb p1_press, checkfreq2
+    lcall checkfreq1
+    jb p1_press, start_game_hit2
     Wait_Milli_Seconds(#50)
-    jb p1_press, checkfreq2
+    jb p1_press, start_game_hit2
     jnb p1_press, $
     clr TR1
     clr a 
@@ -391,9 +391,10 @@ checkfreq1_jmp:
     ljmp checkfreq1
 start_game_hit2:
     lcall forever1
-    jb p2_press, checkfreq1_jmp
+    lcall freq2_press
+    jb p2_press, start_game_hit1
     Wait_Milli_Seconds(#50)
-    jb p2_press, checkfreq1_jmp
+    jb p2_press, start_game_hit1
     jnb p2_press, $
     clr TR1
     clr a 
