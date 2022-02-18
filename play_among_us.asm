@@ -1,4 +1,4 @@
-.asm: a) Increments/decrements a BCD variable every half second using
+; ISR_example.asm: a) Increments/decrements a BCD variable every half second using
 ; an ISR for timer 2; b) Generates a 2kHz square wave at pin P1.1 using
 ; an ISR for timer 0; and c) in the 'main' loop it displays the variable
 ; incremented/decremented using the ISR for timer 2 on the LCD.  Also resets it to 
@@ -15,7 +15,7 @@ TIMER01_RATE   EQU 5000     ; 2048Hz squarewave (peak amplitude of CEM-1203 spea
 TIMER01_RELOAD EQU ((65536-(CLK/TIMER01_RATE)))
 TIMER2_RATE   EQU 1000     ; 1000Hz, for a timer tick of 1ms
 TIMER2_RELOAD EQU ((65536-(CLK/TIMER2_RATE)))
-;Normal notes
+;Normal notes Octave6
 TIMER0C_RATE EQU 2093
 TIMER0C_RELOAD EQU ((65536-(CLK/TIMER0C_RATE)))
 TIMER0D_RATE EQU 2349
@@ -30,7 +30,7 @@ TIMER0A_RATE EQU 3520
 TIMER0A_RELOAD EQU ((65536-(CLK/TIMER0A_RATE)))
 TIMER0B_RATE EQU 3951
 TIMER0B_RELOAD EQU ((65536-(CLK/TIMER0B_RATE)))
-;Sharps
+;Sharps Octave 6
 TIMER0C1_RATE EQU 2217
 TIMER0C1_RELOAD EQU ((65536-(CLK/TIMER0C1_RATE)))
 TIMER0D1_RATE EQU 2489
@@ -41,7 +41,11 @@ TIMER0G1_RATE EQU 3322
 TIMER0G1_RELOAD EQU ((65536-(CLK/TIMER0G1_RATE)))
 TIMER0A1_RATE EQU 3729
 TIMER0A1_RELOAD EQU ((65536-(CLK/TIMER0A1_RATE)))
-
+;lower Octaves
+TIMER0A2_RATE EQU 1865 ;Octave 5 A#
+TIMER0A2_RELOAD EQU ((65536-(CLK/TIMER0A2_RATE)))
+TIMER0C2_RATE EQU 262 ;Octave 3 C
+TIMER0C2_RELOAD EQU ((65536-(CLK/TIMER0C2_RATE)))
 
 
 BOOT_BUTTON   equ P4.5
@@ -308,6 +312,36 @@ mov RL0, #low(TIMER0B_RELOAD)
     setb ET0  ; Enable timer 0 interrupt
     setb TR0  ; Start timer 0
 ret
+
+Timer0A2_Init:
+mov a, TMOD
+anl a, #0xf0 ; Clear the bits for timer 0
+orl a, #0x01 ; Configure timer 0 as 16-timer
+mov TMOD, a
+mov TH0, #high(TIMER0A2_RELOAD)
+mov TL0, #low(TIMER0A2_RELOAD)
+; Set autoreload value
+mov RH0, #high(TIMER0A2_RELOAD)
+mov RL0, #low(TIMER0A2_RELOAD)
+; Enable the timer and interrupts
+    setb ET0  ; Enable timer 0 interrupt
+    setb TR0  ; Start timer 0
+ret
+
+Timer0C2_Init:
+mov a, TMOD
+anl a, #0xf0 ; Clear the bits for timer 0
+orl a, #0x01 ; Configure timer 0 as 16-timer
+mov TMOD, a
+mov TH0, #high(TIMER0C2_RELOAD)
+mov TL0, #low(TIMER0C2_RELOAD)
+; Set autoreload value
+mov RH0, #high(TIMER0C2_RELOAD)
+mov RL0, #low(TIMER0C2_RELOAD)
+; Enable the timer and interrupts
+    setb ET0  ; Enable timer 0 interrupt
+    setb TR0  ; Start timer 0
+ret
 ;---------------------------------;
 ; ISR for timer 0.  Set to execute;
 ; every 1/4096Hz to generate a    ;
@@ -412,9 +446,10 @@ jb FREQ_CHANGE1, Freq2;if left button is not pressed go to Freq2
 Wait_Milli_Seconds(#50)
 jb FREQ_CHANGE1, Freq2
 jnb FREQ_CHANGE1, $
+	lcall Timer0C2_Init
+		Wait_Milli_Seconds(#255)
+		Wait_Milli_Seconds(#255)
 	lcall Timer0C_Init
-	Wait_Milli_Seconds(#255)
-	lcall Timer0C1_Init
 		Wait_Milli_Seconds(#255)
 	lcall Timer0D1_Init
 		Wait_Milli_Seconds(#255)
@@ -428,29 +463,33 @@ jnb FREQ_CHANGE1, $
 		Wait_Milli_Seconds(#255)
 	lcall Timer0C_Init
 		Wait_Milli_Seconds(#255)
-	lcall Timer0A1_Init
 		Wait_Milli_Seconds(#255)
+		Wait_Milli_Seconds(#255)
+	lcall Timer0A2_Init
+		Wait_Milli_Seconds(#150)
 	lcall Timer0D_Init
-		Wait_Milli_Seconds(#255)
+		Wait_Milli_Seconds(#150)
 	lcall Timer0C_Init
-		Wait_Milli_Seconds(#255)
-	lcall Timer0G_Init
-		Wait_Milli_Seconds(#255)
-	lcall Timer0C_Init
-		Wait_Milli_Seconds(#255)
-	lcall Timer0C_Init
-		Wait_Milli_Seconds(#255)
-	lcall Timer0D1_Init
-		Wait_Milli_Seconds(#255)
-	lcall Timer0F_Init
-		Wait_Milli_Seconds(#255)
-	lcall Timer0F1_Init
-		Wait_Milli_Seconds(#255)
-	lcall Timer0F_Init
-		Wait_Milli_Seconds(#255)
-	lcall Timer0D1_Init
-		Wait_Milli_Seconds(#255)
-	lcall Timer0F1_Init
+		Wait_Milli_Seconds(#150)
+;	lcall Timer0A1_Init
+;		Wait_Milli_Seconds(#255)
+;	lcall Timer0B_Init
+;		Wait_Milli_Seconds(#255)
+;	lcall Timer0C_Init
+;		Wait_Milli_Seconds(#255)
+;	lcall Timer0C_Init
+;		Wait_Milli_Seconds(#255)
+;	lcall Timer0D1_Init
+;		Wait_Milli_Seconds(#255)
+;	lcall Timer0F_Init
+;		Wait_Milli_Seconds(#255)
+;	lcall Timer0F1_Init
+;		Wait_Milli_Seconds(#255)
+;	lcall Timer0F_Init
+;		Wait_Milli_Seconds(#255)
+;	lcall Timer0D1_Init
+;		Wait_Milli_Seconds(#255)
+;	lcall Timer0F1_Init
 	clr TR0
 	ljmp Freq1
 	
