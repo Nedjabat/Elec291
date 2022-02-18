@@ -20,6 +20,8 @@ TIMER2_RELOAD EQU ((65536-(CLK/TIMER2_RATE)))
 org 0000H
    ljmp MyProgram
 
+org 0x000B
+	ljmp Timer0_ISR
 
 org 0x0013
 	reti
@@ -75,13 +77,6 @@ $include(LCD_4bit.inc) ; A library of LCD related functions and utility macros
 $include(math32.inc)
 $LIST
 
-InitTimer0:
-	mov TCON, #0b_0000_0010 ; Stop timer/counter.  Set as counter (clock input is pin T2).
-	; Set the reload value on overflow to zero (just in case is not zero)
-	mov TL0, #0
-	mov TH0, #0
-    setb P1.0 ; P1.0 is connected to T2.  Make sure it can be used as input.
-    ret
 
 Timer1_Init:
 	mov a, TMOD
@@ -128,46 +123,9 @@ Timer1_Init1:
 ; every 1/4096Hz to generate a    ;
 ; 2048 Hz square wave at pin P1.1 ;
 ;---------------------------------;
-InitTimer2:
-	mov T2CON, #0 ; Stop timer/counter.  Set as timer (clock input is pin 22.1184MHz).
-	; Set the reload value on overflow to zero (just in case is not zero)
-	mov RCAP2H, #0
-	mov RCAP2L, #0
-	setb ET2
-    ret
-
-Timer2_ISR:
-	clr TF2  ; Timer 2 doesn't clear TF2 automatically. Do it in ISR
-	push acc
-	inc T2ov+0
-	mov a, T2ov+0
-	jnz Timer2_ISR_done
-	inc T2ov+1
-Timer2_ISR_done:
-	pop acc
-	reti
-
-;---------------------------------;
-; ISR for timer 0.  Set to execute;
-; every 1/4096Hz to generate a    ;
-; 2048 Hz square wave at pin P1.1 ;
-;---------------------------------;
-Left_blank mac
-	mov a, %0
-	anl a, #0xf0
-	swap a
-	jz Left_blank_%M_a
-	ljmp %1
-Left_blank_%M_a:
-	Display_char(#' ')
-	mov a, %0
-	anl a, #0x0f
-	jz Left_blank_%M_b
-	ljmp %1
-Left_blank_%M_b:
-	Display_char(#' ')
-endmac
-
+; When using a 22.1184MHz crystal in fast mode
+; one cycle takes 1.0/22.1184MHz = 45.21123 ns
+; (tuned manually to get as close to 1s as possible)
 Wait1s:
     mov R2, #176
 X3: mov R1, #250
@@ -175,6 +133,127 @@ X2: mov R0, #166
 X1: djnz R0, X1 ; 3 cycles->3*45.21123ns*166=22.51519us
     djnz R1, X2 ; 22.51519us*250=5.629ms
     djnz R2, X3 ; 5.629ms*176=1.0s (approximately)
+    ret
+
+;Initializes timer/counter 2 as a 16-bit counter
+InitTimer2:
+	mov T2CON, #0b_0000_0010 ; Stop timer/counter.  Set as counter (clock input is pin T2).
+	; Set the reload value on overflow to zero (just in case is not zero)
+	mov RCAP2H, #0
+	mov RCAP2L, #0
+    setb P1.0 ; P1.0 is connected to T2.  Make sure it can be used as input.
+    ret
+
+InitTimer0:
+    clr TF0
+	;Stop timer/counter.  Set as counter (clock input is pin T2).
+	; Set the reload value on overflow to zero (just in case is not zero)
+	mov RH0, #0
+	mov RL0, #0
+    setb P0.0 ; P1.0 is connected to T2.  Make sure it can be used as input.
+    ret
+
+;Converts the hex number in TH2-TL2 to BCD in R2-R1-R0
+hex2bcd1:
+	clr a
+    mov R0, #0  ;Set BCD result to 00000000 
+    mov R1, #0
+    mov R2, #0
+    mov R3, #16 ;Loop counter.
+
+hex2bcd_loop:
+    mov a, TL2 ;Shift TH0-TL0 left through carry
+    rlc a
+    mov TL2, a
+    
+    mov a, TH2
+    rlc a
+    mov TH2, a
+      
+	; Perform bcd + bcd + carry
+	; using BCD numbers
+	mov a, R0
+	addc a, R0
+	da a
+	mov R0, a
+	
+	mov a, R1
+	addc a, R1
+	da a
+	mov R1, a
+	
+	mov a, R2
+	addc a, R2
+	da a
+	mov R2, a
+	
+	djnz R3, hex2bcd_loop
+	ret
+hex2bcd2:
+	clr a
+    mov R0, #0  ;Set BCD result to 00000000 
+    mov R1, #0
+    mov R2, #0
+    mov R3, #16 ;Loop counter.
+
+hex2bcd_loop1:
+    mov a, TL0 ;Shift TH0-TL0 left through carry
+    rlc a
+    mov TL0, a
+    
+    mov a, TH0
+    rlc a
+    mov TH0, a
+      
+	; Perform bcd + bcd + carry
+	; using BCD numbers
+	mov a, R0
+	addc a, R0
+	da a
+	mov R0, a
+	
+	mov a, R1
+	addc a, R1
+	da a
+	mov R1, a
+	
+	mov a, R2
+	addc a, R2
+	da a
+	mov R2, a
+	
+	djnz R3, hex2bcd_loop1
+	ret
+; Dumps the 5-digit packed BCD number in R2-R1-R0 into the LCD
+DisplayBCD_LCD:
+	; 5th digit:
+    mov a, R2
+    anl a, #0FH
+    orl a, #'0' ; convert to ASCII
+	lcall ?WriteData
+	; 4th digit:
+    mov a, R1
+    swap a
+    anl a, #0FH
+    orl a, #'0' ; convert to ASCII
+	lcall ?WriteData
+	; 3rd digit:
+    mov a, R1
+    anl a, #0FH
+    orl a, #'0' ; convert to ASCII
+	lcall ?WriteData
+	; 2nd digit:
+    mov a, R0
+    swap a
+    anl a, #0FH
+    orl a, #'0' ; convert to ASCII
+	lcall ?WriteData
+	; 1st digit:
+    mov a, R0
+    anl a, #0FH
+    orl a, #'0' ; convert to ASCII
+	lcall ?WriteData
+    
     ret
 
 random:
@@ -198,6 +277,7 @@ wait_random:
     Wait_Milli_Seconds(seed+2)
     Wait_Milli_Seconds(seed+3)
     ret
+
 movtox:
 	; 5th digit:
     mov a, R2
@@ -234,73 +314,22 @@ movtox:
 	;lcall ?WriteData
     
     ret
+;---------------------------------;
+; Hardware initialization         ;
+;---------------------------------;
 
-Display_10_digit_BCD:
-	Set_Cursor(2, 1)
-	Display_BCD(bcd+4)
-	Display_BCD(bcd+3)
-	Display_BCD(bcd+2)
-	Display_BCD(bcd+1)
-	Display_BCD(bcd+0)
-	; Replace all the zeros to the left with blanks
-	Set_Cursor(2, 1)
-	Left_blank(bcd+4, skip_blank)
-	Left_blank(bcd+3, skip_blank)
-	Left_blank(bcd+2, skip_blank)
-	Left_blank(bcd+1, skip_blank)
-    Left_blank(bcd+0, skip_blank)
-	mov a, bcd+0
-	anl a, #0f0h
-	swap a
-	jnz skip_blank
-	Display_char(#' ')
-skip_blank:
-	ret
-
-hex2bcd5:
-	clr a
-    mov R0, #0  ;Set BCD result to 00000000 
-    mov R1, #0
-    mov R2, #0
-    mov R3, #16 ;Loop counter.
-
-hex2bcd_loop5:
-    mov a, TL2 ;Shift TH0-TL0 left through carry
-    rlc a
-    mov TL2, a
-    
-    mov a, TH2
-    rlc a
-    mov TH2, a
-      
-	; Perform bcd + bcd + carry
-	; using BCD numbers
-	mov a, R0
-	addc a, R0
-	da a
-	mov R0, a
-	
-	mov a, R1
-	addc a, R1
-	da a
-	mov R1, a
-	
-	mov a, R2
-	addc a, R2
-	da a
-	mov R2, a
-	
-	djnz R3, hex2bcd_loop5
-	ret
-
+;---------------------------------;
+; Main program loop               ;
+;---------------------------------;
 MyProgram:
-    mov SP, #0x7F
+    ; Initialize the hardware:
+    mov SP, #7FH
     Set_Cursor(1, 1)
     Send_Constant_String(#Initial_Message)
     Set_Cursor(2, 1)
     Send_Constant_String(#Initial_Message2)
-    lcall InitTimer0
     lcall InitTimer2
+    lcall InitTimer0
     setb EA
     jb P4.5, $
     mov seed+0, TH2
@@ -309,49 +338,82 @@ MyProgram:
     mov seed+3, TL2
     mov p1points, #0x00
     mov p2points, #0x00
-    ljmp loop
-loop:
-
-    Set_Cursor(1, 9)
-    Display_BCD(p1points)
-    Set_Cursor(2, 9)
-    Display_BCD(p2points)
-    ljmp measure_freq1
-    Display_BCD(freq1)
-    jb START_BUTTON, start_game
-    Wait_Milli_Seconds(#50)
-    jb START_BUTTON, start_game
-    jnb START_BUTTON, $
-    ljmp loop
-
-measure_freq1:
-   clr TR0 ; Stop counter 2
+    
+forever:
+    ; Measure the frequency applied to pin T2
+    clr TR2 ; Stop counter 2
     clr a
+    clr TR0
     mov TL0, a
     mov TH0, a
-    clr TF0
-    setb TR0 ; Start counter 2
+    mov TL2, a
+    mov TH2, a
+    clr TF2
+    setb TR2 ; Start counter 2
+    setb TR0
     lcall Wait1s ; Wait one second
-    clr TR0 
-    Set_Cursor(1, 11)
-	lcall hex2bcd5
-    lcall movtox 
-    mov freq1, bcd
-    ret
+    clr TR2 ; Stop counter 2, TH2-TL2 has the frequency
+    clr TR0
 
+    Set_Cursor(1, 12)
+	lcall hex2bcd1
+    lcall DisplayBCD_LCD
+    Set_Cursor(2,12)
+    lcall hex2bcd2
+    lcall DisplayBCD_LCD
+    ljmp start_game
+	; Convert the result to BCD and display on LCD
+	
+    sjmp forever ;  Repeat! 
+
+forever1:
+
+    clr TR2 ; Stop counter 2
+    mov TL2, #0
+    mov TH2, #0
+    jb P2.0, $
+    jnb P2.0, $
+    setb TR2 ; Start counter 0
+    jb P2.0, $
+    jnb P2.0, $
+    clr TR2 ; Stop counter 2, TH2-TL2 has the period
+    ; save the period of P2.0 for later use
+    mov Period_A+0, TL2
+    mov Period_A+1, TH2
+
+    Set_Cursor(1, 11)
+	lcall hex2bcd2
+    lcall DisplayBCD_LCD
+
+     ; Measure the period applied to pin P2.1
+    clr TR2 ; Stop counter 2
+    mov TL2, #0
+    mov TH2, #0
+    jb P2.1, $
+    jnb P2.1, $
+    setb TR2 ; Start counter 0
+    jb P2.1, $
+    jnb P2.1, $
+    clr TR2 ; Stop counter 2, TH2-TL2 has the period
+    ; save the period of P2.1 for later use
+    mov Period_B+0, TL2
+    mov Period_B+1, TH2
+
+	; Convert the result to BCD and display on LCD
+	Set_Cursor(2, 11)
+	lcall hex2bcd2
+    lcall DisplayBCD_LCD
+
+    ret
 start_game:
+    setb p1_press
+    setb p2_press   
     Set_Cursor(1, 9)
     Display_BCD(p1points)
     Set_Cursor(2, 9)
     Display_BCD(p2points)
-    clr p1_press
-    clr p2_press
     lcall random
     lcall wait_random
-    Set_Cursor(1, 9)
-    Display_BCD(p1points)
-    Set_Cursor(2, 9)
-    Display_BCD(p2points)
     mov a, seed+1
     mov c, acc.3
     ;mov HLbit, c
@@ -365,36 +427,36 @@ lose_tone:
     ljmp start_game_nohit1
 win_tone: 
     lcall Timer1_Init1
-    ljmp checkfreq1
+    
+    ljmp start_game_hit1
     
 checkfreq1:
-    load_y(4720)
-    mov x, freq1
+    load_y(4745)
     lcall x_lteq_y
     jbc mf, freq1_press
-    ljmp start_game_hit1
+    ret
 
 freq1_press:
-    setb p1_press
-    ljmp start_game_hit1
+    clr p1_press
+    ret
 
 checkfreq2:
-    load_y(4720)
+    load_y(4745)
     mov x, freq2
     lcall x_lteq_y
     jbc mf, freq2_press
-    ljmp start_game_hit2
+    ret
 
 freq2_press:
-    setb p2_press
-    ljmp start_game_hit2
+    clr p2_press
+    ret
 
 start_game_hit1:
-    jb p1_press, checkfreq2
-
-    Wait_Milli_Seconds(#50)
-    jb p1_press, checkfreq2
-    jnb p1_press, $
+    lcall forever1
+    lcall movtox
+    lcall bcd2hex
+    lcall checkfreq1
+    jbc p1_press, start_game_hit2
     clr TR1
     clr a 
     mov a, p1points
@@ -402,35 +464,30 @@ start_game_hit1:
     mov p1points, a
     cjne a, #0x05, start_jmp1
     clr a
-    clr p1_press
-    clr p2_press
+    setb p1_press
+    setb p2_press
     ljmp p1win_jmp
-    
- 
 
 p1win_jmp:
-    clr p1_press
-    clr p2_press
+    setb p1_press
+    setb p2_press
     ljmp p1win
-
+checkfreq1_jmp:
+    ljmp checkfreq1
 start_game_hit2:
-    ljmp checkfreq2
-    jb p2_press, checkfreq1
-    Wait_Milli_Seconds(#50)
-    jb p2_press, checkfreq1_jmp
-    jnb p2_press, $
+    lcall forever1
+    lcall freq2_press
+    jbc p2_press, start_game_hit1
     clr TR1
     clr a 
     mov a, p2points
-    add a, #0x01
+    ;add a, #0x01
     mov p2points, a
     cjne a, #0x05, start_jmp1
-    clr p1_press
-    clr p2_press
+    setb p1_press
+    setb p2_press
     clr a
     ljmp p2win_jmp
- checkfreq1_jmp:
- ljmp checkfreq1
 start_game_hit1_jmp:
 	ljmp start_game_hit1
 	
@@ -438,8 +495,8 @@ start_jmp1:
     ljmp start_game
 
 p2win_jmp:
-    clr p1_press
-    clr p2_press
+    setb p1_press
+    setb p2_press
     ljmp p2win
 
 start_game_nohit1:
@@ -452,7 +509,7 @@ start_game_nohit1:
     load_y(1000)
     lcall x_eq_y
     jb mf, start_game_jmp
-    mov counter, X ; counter+
+    mov counter, x ; counter+
     jb p1_press, start_game_nohit2
     Wait_Milli_Seconds(#50)
     jb p1_press, start_game_nohit2
@@ -474,8 +531,8 @@ start_jmpsub1:
     da a
     mov p1points, a
     clr a
-    clr p1_press
-    clr p2_press
+    setb p1_press
+    setb p2_press
 
 
 start_game_nohit2:
@@ -518,14 +575,15 @@ start_game_nohit1_jmp:
 	ljmp start_game_nohit1
 
 start_jmp:
-    clr p1_press
-    clr p2_press
+    setb p1_press
+    setb p2_press
     ljmp start_game
 p1win:
-    clr p1_press
-    clr p2_press
+    setb p1_press
+    setb p2_press
     Set_Cursor(1, 9)
     Send_Constant_String(#Winner1_message1)
+    Set_Cursor(2, 9)
     Send_Constant_String(#Winner1_message2)
     Wait_Milli_Seconds(#5)
     Set_Cursor(1,1)
@@ -540,8 +598,8 @@ p1win:
 p1win_jmp2:
     ljmp p1win
 p2win: 
-    clr p1_press
-    clr p2_press
+    setb p1_press
+    setb p2_press
     Set_Cursor(1, 9)
     Send_Constant_String(#Winner2_message1)
     Set_Cursor(2,9)
@@ -570,78 +628,4 @@ restart_game:
     mov p1points, #0x00
     mov p2points, #0x00
     ljmp start_game
-
-
-hex2bcd_stuff:
-	clr a
-    mov R0, #0  ;Set BCD result to 00000000 
-    mov R1, #0
-    mov R2, #0
-    mov R3, #16 ;Loop counter.
-
-hex2bcd_loop:
-    mov a, TL0 ;Shift TH0-TL0 left through carry
-    rlc a
-    mov TL0, a
-    
-    mov a, TH0
-    rlc a
-    mov TH0, a
-      
-	; Perform bcd + bcd + carry
-	; using BCD numbers
-	mov a, R0
-	addc a, R0
-	da a
-	mov R0, a
-	
-	mov a, R1
-	addc a, R1
-	da a
-	mov R1, a
-	
-	mov a, R2
-	addc a, R2
-	da a
-	mov R2, a
-	
-	djnz R3, hex2bcd_loop
-	ret
-
-; Dumps the 5-digit packed BCD number in R2-R1-R0 into the LCD
-DisplayBCD_LCD_stuff:
-	; 5th digit:
-    mov a, R2
-    anl a, #0FH
-    orl a, #'0' ; convert to ASCII
-	lcall ?WriteData
-	; 4th digit:
-    mov a, R1
-    swap a
-    anl a, #0FH
-    orl a, #'0' ; convert to ASCII
-	lcall ?WriteData
-	; 3rd digit:
-    mov a, R1
-    anl a, #0FH
-    orl a, #'0' ; convert to ASCII
-	lcall ?WriteData
-	; 2nd digit:
-    mov a, R0
-    swap a
-    anl a, #0FH
-    orl a, #'0' ; convert to ASCII
-	lcall ?WriteData
-	; 1st digit:
-    mov a, R0
-    anl a, #0FH
-    orl a, #'0' ; convert to ASCII
-	lcall ?WriteData
-    
-    ret
-
-;freq1:
-
-   
-
 end
