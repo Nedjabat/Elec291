@@ -303,7 +303,7 @@ forever:
     jb START_BUTTON, start_game
     jnb START_BUTTON, $
 	; Convert the result to BCD and display on LCD
-	Set_Cursor(2, 15)
+	Set_Cursor(2, 11)
 	lcall hex2bcd1
     lcall DisplayBCD_LCD
     sjmp forever ;  Repeat! 
