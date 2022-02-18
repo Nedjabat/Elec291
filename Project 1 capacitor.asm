@@ -368,10 +368,7 @@ freq2_press:
 start_game_hit1:
     lcall forever1
     lcall checkfreq1
-    jb p1_press, start_game_hit2
-    Wait_Milli_Seconds(#50)
-    jb p1_press, start_game_hit2
-    jnb p1_press, $
+    jbc p1_press, start_game_hit2
     clr TR1
     clr a 
     mov a, p1points
@@ -392,10 +389,7 @@ checkfreq1_jmp:
 start_game_hit2:
     lcall forever1
     lcall freq2_press
-    jb p2_press, start_game_hit1
-    Wait_Milli_Seconds(#50)
-    jb p2_press, start_game_hit1
-    jnb p2_press, $
+    jbc p2_press, start_game_hit1
     clr TR1
     clr a 
     mov a, p2points
