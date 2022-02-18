@@ -189,7 +189,7 @@ hex2bcd_loop:
 	
 	djnz R3, hex2bcd_loop
 	ret
-hex2bcd2:
+hex2bcd2_1:
 	clr a
     mov R0, #0  ;Set BCD result to 00000000 
     mov R1, #0
@@ -359,7 +359,7 @@ forever:
 	lcall hex2bcd1
     lcall DisplayBCD_LCD
     Set_Cursor(2,12)
-    lcall hex2bcd2
+    lcall hex2bcd2_1
     lcall DisplayBCD_LCD
     ljmp start_game
 	; Convert the result to BCD and display on LCD
@@ -385,7 +385,7 @@ forever1:
     mov per1, a
 
     Set_Cursor(1, 11)
-	lcall hex2bcd2
+	lcall hex2bcd2_1
     lcall DisplayBCD_LCD
     Set_Cursor(1,9)
     Display_BCD(per1)
@@ -407,7 +407,7 @@ forever1:
 
 	; Convert the result to BCD and display on LCD
 	Set_Cursor(2, 11)
-	lcall hex2bcd2
+	lcall hex2bcd2_1
     lcall DisplayBCD_LCD
 
     ret
