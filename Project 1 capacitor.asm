@@ -302,6 +302,20 @@ forever:
 	
     sjmp forever ;  Repeat! 
 
+forever1:
+    clr TR2 ; Stop counter 2
+    clr a
+    mov TL2, a
+    mov TH2, a
+    clr TF2
+    setb TR2 ; Start counter 2
+    lcall Wait1s ; Wait one second
+    clr TR2 ; Stop counter 2, TH2-TL2 has the frequency
+
+    Set_Cursor(2, 12)
+	lcall hex2bcd1
+    lcall DisplayBCD_LCD
+    ret
 start_game:
     clr p1_press
     clr p2_press
@@ -349,6 +363,7 @@ freq2_press:
     ljmp start_game_hit2
 
 start_game_hit1:
+    ljmp forever1
     jb p1_press, checkfreq2
     Wait_Milli_Seconds(#50)
     jb p1_press, checkfreq2
@@ -363,17 +378,17 @@ start_game_hit1:
     clr p1_press
     clr p2_press
     ljmp p1win_jmp
-forever_jmp:
-    ljmp forever
+
 p1win_jmp:
     clr p1_press
     clr p2_press
     ljmp p1win
 
 start_game_hit2:
-    jb p2_press, forever_jmp
+    ljmp forever1
+    jb p2_press, checkfreq1
     Wait_Milli_Seconds(#50)
-    jb p2_press, forever_jmp
+    jb p2_press, checkfreq1
     jnb p2_press, $
     clr TR1
     clr a 
