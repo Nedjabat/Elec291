@@ -40,11 +40,9 @@ p1points: ds 1
 p2points: ds 1
 T0ov: ds 2
 T2ov: ds 2
-freq1: ds 4
-freq2: ds 4
+per1: ds 4
+per2: ds 4
 counter: ds 4
-Period_A: ds 2
-Period_B: ds 2
 
 BSEG
 mf: dbit 1
@@ -382,10 +380,16 @@ forever1:
     ; save the period of P2.0 for later use
     mov Period_A+0, TL2
     mov Period_A+1, TH2
+    mov a, TL2
+    orl a, TH2
+    mov per1, a
 
     Set_Cursor(1, 11)
 	lcall hex2bcd2
     lcall DisplayBCD_LCD
+    Set_Cursor(1,9)
+    Display_BCD(per1)
+
 
      ; Measure the period applied to pin P2.1
     clr TR2 ; Stop counter 2
