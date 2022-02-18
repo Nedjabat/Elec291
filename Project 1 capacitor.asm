@@ -212,7 +212,6 @@ loop:
     setb TR0 ; Start counter 2
     lcall Wait1s ; Wait one second
     clr TR0 
-
     Set_Cursor(1, 11)
 	lcall hex2bcd_stuff
     lcall DisplayBCD_LCD_stuff
@@ -247,7 +246,7 @@ start_game:
     mov a, seed+1
     mov c, acc.3
     ;mov HLbit, c
-    jc lose_tone
+    ;jc lose_tone
     ljmp win_tone
 
 lose_tone:
