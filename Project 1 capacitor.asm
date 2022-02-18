@@ -77,32 +77,6 @@ $include(LCD_4bit.inc) ; A library of LCD related functions and utility macros
 $include(math32.inc)
 $LIST
 
-Timer0_Init:
-	mov a, TMOD
-	anl a, #0xf0 ; 11110000 Clear the bits for timer 0
-	orl a, #0x01 ; 00000001 Configure timer 0 as 16-timer
-	mov TMOD, a
-	mov TH0, #high(TIMER0_RELOAD)
-	mov TL0, #low(TIMER0_RELOAD)
-	; Set autoreload value
-	mov RH0, #high(TIMER0_RELOAD)
-	mov RL0, #low(TIMER0_RELOAD)
-	; Enable the timer and interrupts
-    setb ET0  ; Enable timer 0 interrupt
-    setb TR0  ; Start timer 0
-	ret
-
-Timer0_ISR:
-	clr TF0  ; Timer 2 doesn't clear TF2 automatically. Do it in ISR
-	push acc
-	inc T0ov+0
-	mov a, T0ov+0
-	jnz Timer0_ISR_done
-	inc T0ov+1
-
-Timer0_ISR_done:
-	pop acc
-	reti
 
 Timer1_Init:
 	mov a, TMOD
@@ -167,15 +141,16 @@ InitTimer2:
 	; Set the reload value on overflow to zero (just in case is not zero)
 	mov RCAP2H, #0
 	mov RCAP2L, #0
-    setb P0.0 ; P1.0 is connected to T2.  Make sure it can be used as input.
+    setb P1.0 ; P1.0 is connected to T2.  Make sure it can be used as input.
     ret
 
 InitTimer0:
-	mov T2CON, #0b_0000_0010 ; Stop timer/counter.  Set as counter (clock input is pin T2).
+    clr TF0
+	;Stop timer/counter.  Set as counter (clock input is pin T2).
 	; Set the reload value on overflow to zero (just in case is not zero)
-	mov RCAP2H, #0
-	mov RCAP2L, #0
-    setb P1.0 ; P1.0 is connected to T2.  Make sure it can be used as input.
+	mov RH0, #0
+	mov RL0, #0
+    setb P0.0 ; P1.0 is connected to T2.  Make sure it can be used as input.
     ret
 
 ;Converts the hex number in TH2-TL2 to BCD in R2-R1-R0
@@ -354,6 +329,7 @@ MyProgram:
     Set_Cursor(2, 1)
     Send_Constant_String(#Initial_Message2)
     lcall InitTimer2
+    lcall InitTimer0
     setb EA
     jb P4.5, $
     mov seed+0, TH2
@@ -367,15 +343,23 @@ forever:
     ; Measure the frequency applied to pin T2
     clr TR2 ; Stop counter 2
     clr a
+    clr TR0
+    mov TL0, a
+    mov TH0, a
     mov TL2, a
     mov TH2, a
     clr TF2
     setb TR2 ; Start counter 2
+    setb TR0
     lcall Wait1s ; Wait one second
     clr TR2 ; Stop counter 2, TH2-TL2 has the frequency
+    clr TR0
 
-    Set_Cursor(2, 12)
+    Set_Cursor(1, 12)
 	lcall hex2bcd1
+    lcall DisplayBCD_LCD
+    Set_Cursor(2,12)
+    lcall hex2bcd2
     lcall DisplayBCD_LCD
     ljmp start_game
 	; Convert the result to BCD and display on LCD
