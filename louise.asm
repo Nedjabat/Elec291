@@ -21,7 +21,7 @@ org 0000H
    ljmp MyProgram
 
 org 0x000B
-	reti
+	ljmp Timer0_ISR
 
 org 0x0013
 	reti
@@ -43,8 +43,6 @@ T2ov: ds 2
 per1: ds 4
 per2: ds 4
 counter: ds 4
-Period_A: ds 2
-Period_B: ds 2
 
 BSEG
 mf: dbit 1
@@ -191,7 +189,7 @@ hex2bcd_loop:
 	
 	djnz R3, hex2bcd_loop
 	ret
-hex2bcd3:
+hex2bcd2:
 	clr a
     mov R0, #0  ;Set BCD result to 00000000 
     mov R1, #0
@@ -361,7 +359,7 @@ forever:
 	lcall hex2bcd1
     lcall DisplayBCD_LCD
     Set_Cursor(2,12)
-    lcall hex2bcd1
+    lcall hex2bcd2
     lcall DisplayBCD_LCD
     ljmp start_game
 	; Convert the result to BCD and display on LCD
@@ -387,7 +385,7 @@ forever1:
     mov per1, a
 
     Set_Cursor(1, 11)
-	lcall hex2bcd1
+	lcall hex2bcd2
     lcall DisplayBCD_LCD
     Set_Cursor(1,9)
     Display_BCD(per1)
@@ -409,7 +407,7 @@ forever1:
 
 	; Convert the result to BCD and display on LCD
 	Set_Cursor(2, 11)
-	lcall hex2bcd1
+	lcall hex2bcd2
     lcall DisplayBCD_LCD
 
     ret
@@ -420,10 +418,15 @@ start_game:
     Display_BCD(p1points)
     Set_Cursor(2, 9)
     Display_BCD(p2points)
+
+    mov mf, #0
+
     lcall random
     lcall wait_random
-    mov a, seed+1
-    mov c, acc.3
+
+    jb mf, JMP_Frequency_One
+    
+
     ;mov HLbit, c
     ;jc lose_tone
     ljmp win_tone
@@ -450,9 +453,9 @@ freq1_press:
 
 checkfreq2:
     load_y(4745)
-    ;mov x, freq2
+    mov x, freq2
     lcall x_lteq_y
-    ;jbc mf, freq2_press
+    jbc mf, freq2_press
     ret
 
 freq2_press:
