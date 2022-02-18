@@ -258,45 +258,40 @@ lose_tone:
     ljmp start_game_nohit1
 win_tone: 
     lcall Timer1_Init1
-    ljmp start_game_hit1
+    ljmp checkfreq1
     
 checkfreq1:
     load_y(4720)
     mov x, freq1
     lcall x_lteq_y
-    jb mf, freq1_press
-    ret
+    jbc mf, freq1_press
+    ljmp start_game_hit1
 
 freq1_press:
     setb p1_press
-    ret
+    ljmp start_game_hit1
 
 checkfreq2:
     load_y(4720)
     mov x, freq2
     lcall x_lteq_y
-    jb mf, freq2_press
-    ret
+    jbc mf, freq2_press
+    ljmp start_game_hit2
 
 freq2_press:
     setb p2_press
-    ret
+    ljmp start_game_hit2
 
 start_game_hit1:
-    ljmp checkfreq1
-    Set_Cursor(1, 11)
-    Display_BCD(p1points)
-    Set_Cursor(2, 11)
-    Display_BCD(p2points)
-    jb p1_press, start_game_hit2
+    jb p1_press, checkfreq2
     Wait_Milli_Seconds(#50)
-    jb p1_press, start_game_hit2
+    jb p1_press, checkfreq2
     jnb p1_press, $
     clr TR1
     clr a 
     mov a, p1points
     add a, #0x01
-    mov p2points, a
+    mov p1points, a
     cjne a, #0x05, start_jmp1
     clr a
     clr p1_press
@@ -312,13 +307,9 @@ p1win_jmp:
 
 start_game_hit2:
     ljmp checkfreq2
-    Set_Cursor(1, 11)
-    Display_BCD(p1points)
-    Set_Cursor(2, 11)
-    Display_BCD(p2points)
-    jb p2_press, start_game_hit1_jmp
+    jb p2_press, checkfreq1
     Wait_Milli_Seconds(#50)
-    jb p2_press, start_game_hit1_jmp
+    jb p2_press, checkfreq1
     jnb p2_press, $
     clr TR1
     clr a 
