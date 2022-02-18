@@ -3,7 +3,7 @@ $MODLP51
 $LIST
 
 
-START_BUTTON   	equ P0.0
+START_BUTTON   	equ P4.5
 P1_BUTTON		equ	P2.4
 P2_BUTTON	    equ	P2.6
 
@@ -21,7 +21,7 @@ org 0000H
    ljmp MyProgram
 
 org 0x000B
-	ljmp Timer0_ISR
+	reti
 
 org 0x0013
 	reti
@@ -38,8 +38,6 @@ seed: ds 4
 bcd: ds 5
 p1points: ds 1
 p2points: ds 1
-T0ov: ds 2
-T2ov: ds 2
 freq1: ds 4
 freq2: ds 4
 counter: ds 4
@@ -145,7 +143,7 @@ InitTimer2:
     ret
 
 InitTimer0:
-    clr TF0
+    mov TCON, #0b_0001_0001
 	;Stop timer/counter.  Set as counter (clock input is pin T2).
 	; Set the reload value on overflow to zero (just in case is not zero)
 	mov RH0, #0
@@ -189,7 +187,7 @@ hex2bcd_loop:
 	
 	djnz R3, hex2bcd_loop
 	ret
-hex2bcd2:
+hex2bcd3:
 	clr a
     mov R0, #0  ;Set BCD result to 00000000 
     mov R1, #0
@@ -342,13 +340,14 @@ MyProgram:
 forever:
     ; Measure the frequency applied to pin T2
     clr TR2 ; Stop counter 2
-    clr a
     clr TR0
+    clr a
     mov TL0, a
     mov TH0, a
     mov TL2, a
     mov TH2, a
     clr TF2
+    clr TF0
     setb TR2 ; Start counter 2
     setb TR0
     lcall Wait1s ; Wait one second
@@ -359,7 +358,7 @@ forever:
 	lcall hex2bcd1
     lcall DisplayBCD_LCD
     Set_Cursor(2,12)
-    lcall hex2bcd2
+    lcall hex2bcd3
     lcall DisplayBCD_LCD
     ljmp start_game
 	; Convert the result to BCD and display on LCD
@@ -375,6 +374,7 @@ forever1:
     mov TL2, a
     mov TH2, a
     clr TF2
+    clr TF0
     setb TR2 ; Start counter 2
     setb TR0
     lcall Wait1s ; Wait one second
@@ -385,7 +385,7 @@ forever1:
 	lcall hex2bcd1
     lcall DisplayBCD_LCD
     Set_Cursor(2,12)
-    lcall hex2bcd2
+    lcall hex2bcd3
     lcall DisplayBCD_LCD
     ret
 start_game:
@@ -459,12 +459,12 @@ checkfreq1_jmp:
     ljmp checkfreq1
 start_game_hit2:
     lcall forever1
-    lcall freq2_press
+    lcall checkfreq2
     jbc p2_press, start_game_hit1
     clr TR1
     clr a 
     mov a, p2points
-    ;add a, #0x01
+    add a, #0x01
     mov p2points, a
     cjne a, #0x05, start_jmp1
     setb p1_press
