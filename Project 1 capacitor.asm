@@ -305,10 +305,6 @@ MyProgram:
     mov p2points, #0x00
     
 forever:
-    Set_Cursor(1, 9)
-    Display_BCD(p1points)
-    Set_Cursor(2, 9)
-    Display_BCD(p2points)
     ; Measure the frequency applied to pin T2
     ; Measure the period applied to pin P2.0
     clr TR2 ; Stop counter 2
@@ -322,9 +318,9 @@ forever:
     clr TR2 ; Stop counter 2, TH2-TL2 has the period
     ; save the period of P2.0 for later use
 	; Convert the result to BCD and display on LCD
-	Set_Cursor(1, 11)
+	Set_Cursor(1, 12)
 	lcall hex2bcd1
-    lcall DisplayBCD_LCD
+    ;lcall DisplayBCD_LCD
     
     ; Measure the period applied to pin P2.1
     clr TR2 ; Stop counter 2
@@ -338,14 +334,18 @@ forever:
     clr TR2 ; Stop counter 2, TH2-TL2 has the period
     ; save the period of P2.1 for later use
 	; Convert the result to BCD and display on LCD
-	Set_Cursor(2, 11)
+	Set_Cursor(2, 12)
 	lcall hex2bcd1
-    lcall DisplayBCD_LCD
+   ; lcall DisplayBCD_LCD
 	; Convert the result to BCD and display on LCD
-	
+	ljmp start_game
     ljmp forever ;  Repeat! 
 
 forever1:
+    Set_Cursor(1, 9)
+    Display_BCD(p1points)
+    Set_Cursor(2, 9)
+    Display_BCD(p2points)
     ; Measure the period applied to pin P2.0
     clr TR2 ; Stop counter 2
     mov TL2, #0
@@ -358,11 +358,15 @@ forever1:
     clr TR2 ; Stop counter 2, TH2-TL2 has the period
     ; save the period of P2.0 for later use
 	; Convert the result to BCD and display on LCD
-	Set_Cursor(1, 11)
+	Set_Cursor(1, 12)
 	lcall hex2bcd1
-    lcall DisplayBCD_LCD
+    ;lcall DisplayBCD_LCD
     ret
 forever2:
+    Set_Cursor(1, 9)
+    Display_BCD(p1points)
+    Set_Cursor(2, 9)
+    Display_BCD(p2points)
     ; Measure the period applied to pin P2.1
     clr TR2 ; Stop counter 2
     mov TL2, #0
@@ -375,13 +379,17 @@ forever2:
     clr TR2 ; Stop counter 2, TH2-TL2 has the period
     ; save the period of P2.1 for later use
 	; Convert the result to BCD and display on LCD
-	Set_Cursor(2, 11)
+	Set_Cursor(2, 12)
 	lcall hex2bcd1
-    lcall DisplayBCD_LCD
+    ;lcall DisplayBCD_LCD
     ret
 start_game:
     setb p1_press
-    setb p2_press   
+    setb p2_press 
+    Set_Cursor(1, 9)
+    Display_BCD(p1points)
+    Set_Cursor(2, 9)
+    Display_BCD(p2points)  
     lcall random
     lcall wait_random
     mov a, seed+1
@@ -397,26 +405,27 @@ lose_tone:
     ljmp start_game_nohit1
 win_tone: 
     lcall Timer1_Init1
-    
     ljmp start_game_hit1
     
 checkfreq1:
-    load_y(4745)
+    load_y(4645)
     lcall x_gteq_y
-    jbc mf, freq1_press
+    jbc mf, freq1_nopress
+    setb p1_press
     ret
 
-freq1_press:
+freq1_nopress:
     clr p1_press
     ret
 
 checkfreq2:
-    load_y(4745)
+    load_y(4655)
     lcall x_gteq_y
-    jbc mf, freq2_press
+    jbc mf, freq2_nopress
+    setb p2_press
     ret
 
-freq2_press:
+freq2_nopress:
     clr p2_press
     ret
 
@@ -425,6 +434,8 @@ start_game_hit1:
     lcall movtox
     lcall bcd2hex
     lcall checkfreq1
+    lcall hex2bcd
+    lcall DisplayBCD_LCD
     jbc p1_press, start_game_hit2
     clr TR1
     clr a 
@@ -448,6 +459,8 @@ start_game_hit2:
     lcall movtox
     lcall bcd2hex
     lcall checkfreq2
+    lcall hex2bcd
+    lcall DisplayBCD_LCD
     jbc p2_press, start_game_hit1
     clr TR1
     clr a 
