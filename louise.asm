@@ -133,19 +133,9 @@ InitTimer2:
 	; Set the reload value on overflow to zero (just in case is not zero)
 	mov RCAP2H, #0
 	mov RCAP2L, #0
-	setb ET2
+	setb P1.0
     ret
 
-Timer2_ISR:
-	clr TF2  ; Timer 2 doesn't clear TF2 automatically. Do it in ISR
-	push acc
-	inc T2ov+0
-	mov a, T2ov+0
-	jnz Timer2_ISR_done
-	inc T2ov+1
-Timer2_ISR_done:
-	pop acc
-	reti
 
 ;---------------------------------;
 ; ISR for timer 0.  Set to execute;
@@ -195,23 +185,23 @@ MyProgram:
     lcall InitTimer2
     setb EA
     jb P4.5, $
-    mov seed+0, TH2
+    mov seed+0, TH0
     mov seed+1, #0x01
     mov seed+2, #0x87
-    mov seed+3, TL2
+    mov seed+3, TL0
     mov p1points, #0x00
     mov p2points, #0x00
     ljmp loop
 loop:
 
-    clr TR0 ; Stop counter 2
+    clr TR2 ; Stop counter 2
     clr a
-    mov TL0, a
-    mov TH0, a
-    clr TF0
-    setb TR0 ; Start counter 2
+    mov TL2, a
+    mov TH2, a
+    clr TF2
+    setb TR2 ; Start counter 2
     lcall Wait1s ; Wait one second
-    clr TR0 
+    clr TR2 
 
     Set_Cursor(1, 11)
 	lcall hex2bcd_stuff
@@ -247,7 +237,7 @@ start_game:
     mov a, seed+1
     mov c, acc.3
     ;mov HLbit, c
-    jc lose_tone
+    ;jc lose_tone
     ljmp win_tone
 
 lose_tone:
@@ -264,6 +254,16 @@ checkfreq1:
     mov x, freq1
     lcall x_lteq_y
     jbc mf, freq1_press
+
+    clr TR0 ; Stop counter 2
+    clr a
+    mov TL0, a
+    mov TH0, a
+    clr TF0
+    setb TR0 ; Start counter 2
+    lcall Wait1s ; Wait one second
+    clr TR0 
+
     ljmp start_game_hit1
 
 freq1_press:
@@ -275,6 +275,16 @@ checkfreq2:
     mov x, freq2
     lcall x_lteq_y
     jbc mf, freq2_press
+
+    clr TR0 ; Stop counter 2
+    clr a
+    mov TL0, a
+    mov TH0, a
+    clr TF0
+    setb TR0 ; Start counter 2
+    lcall Wait1s ; Wait one second
+    clr TR0 
+
     ljmp start_game_hit2
 
 freq2_press:
@@ -307,7 +317,7 @@ p1win_jmp:
 
 start_game_hit2:
     ljmp checkfreq2
-    jb p2_press, checkfreq1
+    jb p2_press, checkfreq1_jmp
     Wait_Milli_Seconds(#50)
     jb p2_press, checkfreq1_jmp
     jnb p2_press, $
