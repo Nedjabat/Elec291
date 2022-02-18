@@ -9,13 +9,13 @@ P2_BUTTON	    equ	P2.6
 UPDOWN        	equ P0.1
 
 CLK           EQU 22118400
-TIMER0_RATE   EQU 2000     ; 1000Hz, for a timer tick of 1ms
-TIMER0_RELOAD EQU ((65536-(CLK/TIMER2_RATE)))
-TIMER1_RATE   EQU 2000     ; 2048Hz squarewave (peak amplitude of CEM-1203 speaker)
+TIMER1_RATE   EQU 100     ; 1000Hz, for a timer tick of 1ms
 TIMER1_RELOAD EQU ((65536-(CLK/TIMER1_RATE)))
-TIMER1_RATE1   EQU 2000  
-TIMER1_RELOAD1 EQU ((65536-(CLK/TIMER1_RATE1)))               ;2000Hz frequency lose frequency
-TIMER2_RATE   EQU 2000                ;2100Hz frequency win frequency
+TIMER00_RATE   EQU 6000     ; 2100Hz Win Tone
+TIMER00_RELOAD EQU ((65536-(CLK/TIMER00_RATE)))
+TIMER01_RATE   EQU 2000  
+TIMER01_RELOAD EQU ((65536-(CLK/TIMER01_RATE))) ;2000Hz frequency lose frequency
+TIMER2_RATE   EQU 4200                 ;2100Hz frequency win frequency
 TIMER2_RELOAD EQU ((65536-(CLK/TIMER2_RATE)))
 
 org 0000H
@@ -81,19 +81,19 @@ $include(math32.inc)
 $LIST
 
 
-Timer1_Init:
+Timer00_Init:
 	mov a, TMOD
 	anl a, #0xf0 ; Clear the bits for timer 0
 	orl a, #0x01 ; Configure timer 0 as 16-timer
 	mov TMOD, a
-	mov TH1, #high(TIMER1_RELOAD)
-	mov TL1, #low(TIMER1_RELOAD)
+	mov TH0, #high(TIMER00_RELOAD)
+	mov TL0, #low(TIMER00_RELOAD)
 	; Set autoreload value
-	mov RH1, #high(TIMER1_RELOAD)
-	mov RL1, #low(TIMER1_RELOAD)
+	mov RH0, #high(TIMER00_RELOAD)
+	mov RL0, #low(TIMER00_RELOAD)
 	; Enable the timer and interrupts
-    setb ET1  ; Enable timer 0 interrupt
-    setb TR1  ; Start timer 0
+    setb ET0  ; Enable timer 0 interrupt
+    setb TR0  ; Start timer 0
 	ret
 
 ;---------------------------------;
@@ -101,25 +101,28 @@ Timer1_Init:
 ; every 1/4096Hz to generate a    ;
 ; 2048 Hz square wave at pin P1.1 ;
 ;---------------------------------;
-Timer1_ISR:
-	;clr TF0  ; According to the data sheet this is done for us already.
-	cpl SOUND_OUT ; Connect speaker to P1.1!
-	reti
 
-Timer1_Init1:
+
+Timer01_Init:
 	mov a, TMOD
 	anl a, #0xf0 ; Clear the bits for timer 0
 	orl a, #0x01 ; Configure timer 0 as 16-timer
 	mov TMOD, a
-	mov TH1, #high(TIMER1_RELOAD1)
-	mov TL1, #low(TIMER1_RELOAD1)
+	mov TH0, #high(TIMER01_RELOAD)
+	mov TL0, #low(TIMER01_RELOAD)
 	; Set autoreload value
-	mov RH1, #high(TIMER1_RELOAD1)
-	mov RL1, #low(TIMER1_RELOAD1)
+	mov RH0, #high(TIMER01_RELOAD)
+	mov RL0, #low(TIMER01_RELOAD)
 	; Enable the timer and interrupts
-    setb ET1  ; Enable timer 0 interrupt
-    setb TR1  ; Start timer 0
+    setb ET0  ; Enable timer 0 interrupt
+    setb TR0  ; Start timer 0
 	ret
+	
+Timer0_ISR:
+	clr TF0  ; According to the data sheet this is done for us already.
+	cpl SOUND_OUT ; Connect speaker to P1.1!
+	reti
+	
 Timer2_Init:
 
 	mov T2CON, #0 ; Stop timer/counter.  Autoreload mode.
@@ -141,25 +144,25 @@ Timer2_Init:
 ;---------------------------------;
 ; ISR for timer 2                 ;
 ;---------------------------------;
-Timer0_Init:
+Timer1_Init:
 
-	mov TH0, #high(TIMER0_RELOAD)
-	mov TL0, #low(TIMER0_RELOAD)
+	mov TH1, #high(TIMER1_RELOAD)
+	mov TL1, #low(TIMER1_RELOAD)
 	; Set the reload value
 	; Init One millisecond interrupt counter.  It is a 16-bit variable made with two 8-bit parts
 	clr a
 	mov Count1ms+0, a
 	mov Count1ms+1, a
 	; Enable the timer and interrupts
-    setb ET0  ; Enable timer 2 interrupt
-    setb TR0  ; Enable timer 2
+    setb ET1  ; Enable timer 2 interrupt
+    setb TR1  ; Enable timer 2
 	ret
 
 ;---------------------------------;
 ; ISR for timer 2                 ;
 ;---------------------------------;
-Timer0_ISR:
-	clr TF0  ; Timer 2 doesn't clear TF2 automatically. Do it in ISR ; To check the interrupt rate with oscilloscope. It must be precisely a 1 ms pulse.
+Timer1_ISR:
+	clr TF1  ; Timer 2 doesn't clear TF2 automatically. Do it in ISR ; To check the interrupt rate with oscilloscope. It must be precisely a 1 ms pulse.
 	
 	; The two registers used in the ISR must be saved in the stack
 	push acc
@@ -173,9 +176,9 @@ Timer0_ISR:
 Inc_Done:
 	; Check if half second has passed
 	mov a, Count1ms+0
-	cjne a, #low(1000), Timer0_ISR_done ; Warning: this instruction changes the carry flag!
+	cjne a, #low(1000), Timer1_ISR_done ; Warning: this instruction changes the carry flag!
 	mov a, Count1ms+1
-	cjne a, #high(1000), Timer0_ISR_done
+	cjne a, #high(1000), Timer1_ISR_done
 	
 	; 500 milliseconds have passed.  Set a flag so the main program knows
 	setb half_seconds_flag ; Let the main program know half second had passed
@@ -186,19 +189,19 @@ Inc_Done:
 	mov Count1ms+1, a
 	; Increment the BCD counter
 	mov a, seconds
-	jnb UPDOWN, Timer0_ISR_decrement
+	jnb UPDOWN, Timer1_ISR_decrement
 	add a, #0x01
-	sjmp Timer0_ISR_da
-Timer0_ISR_decrement:
+	sjmp Timer1_ISR_da
+Timer1_ISR_decrement:
 	add a, #0x99 ; Adding the 10-complement of -1 is like subtracting 1.
-Timer0_ISR_da:
+Timer1_ISR_da:
 	da a ; Decimal adjust instruction.  Check datasheet for more details!
 	mov seconds, a
-    cjne a, #0x60, Timer0_ISR_done
+    cjne a, #0x60, Timer1_ISR_done
     setb second_high
     clr a
     mov seconds, a
-Timer0_ISR_done:
+Timer1_ISR_done:
 	pop psw
 	pop acc
 	reti
@@ -369,7 +372,7 @@ MyProgram:
     mov SP, #7FH
     lcall InitTimer2
     lcall LCD_4BIT
-    lcall Timer0_Init
+    lcall Timer1_Init
     Set_Cursor(1, 1)
     Send_Constant_String(#Initial_Message)
     Set_Cursor(2, 1)
@@ -467,23 +470,38 @@ forever2:
 start_game:
     setb p1_press
     setb p2_press 
+    ;Set_Cursor(1, 1)
+    ;Send_Constant_String(#Initial_Message);put initial message here too
+    ;Set_Cursor(2, 1)
+    ;Send_Constant_String(#Initial_Message2)	
     Set_Cursor(1, 9)
     Display_BCD(p1points)
     Set_Cursor(2, 9)
     Display_BCD(p2points)  
+	;Set_Cursor(1, 12) ;period? for visibility
+	;lcall hex2bcd1
+	;Set_Cursor(2, 12)
+	;lcall hex2bcd1
     lcall random
     lcall wait_random
     mov a, seed+1
     mov c, acc.3
     ;mov HLbit, c
-    ljmp lose_tone
     jc win_tone
+    ljmp lose_tone
+
 
 lose_tone:
-    lcall Timer1_Init
+    lcall Timer01_Init
+    		Wait_Milli_Seconds(#255)
+    		Wait_Milli_Seconds(#255)
+    		Wait_Milli_Seconds(#255)
     ljmp start_game_nohit1
 win_tone: 
-    lcall Timer1_Init1
+    lcall Timer00_Init
+    		Wait_Milli_Seconds(#255)
+    		Wait_Milli_Seconds(#255)
+    		Wait_Milli_Seconds(#255)
     ljmp start_game_hit1
     
 checkfreq1:
@@ -683,5 +701,5 @@ restart_jmp:
 restart_game:
     mov p1points, #0x00
     mov p2points, #0x00
-    ljmp start_game
+    ljmp MyProgram	;goes back to MyProgram instead of start_game			
 end
