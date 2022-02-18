@@ -13,7 +13,7 @@
 0000             15   TIMER00_RELOAD EQU ((65536-(CLK/TIMER00_RATE)))
 0000             16   TIMER01_RATE   EQU 2000  ;2000Hz Lose Tone, made very low freq to check
 0000             17   TIMER01_RELOAD EQU ((65536-(CLK/TIMER01_RATE))) ;2000Hz frequency lose frequency
-0000             18   TIMER2_RATE   EQU 4200                 ;2100Hz frequency win frequency
+0000             18   TIMER2_RATE   EQU 4200                 
 0000             19   TIMER2_RELOAD EQU ((65536-(CLK/TIMER2_RATE)))
 0000             20   
 0000             21   ;Music player
@@ -162,7 +162,7 @@
 03DD D2A9       151       setb ET0  ; Enable timer 0 interrupt
 03DF D28C       152       setb TR0  ; Start timer 0
 03E1 22         153            ret
-03E2            154   
+03E2            154   ;Music Player Timers
 03E2            155   Timer0C_Init:
 03E2 E589       156   mov a, TMOD
 03E4 54F0       157   anl a, #0xf0 ; Clear the bits for timer 0
@@ -372,7 +372,7 @@
 053B D2A9       361       setb ET0  ; Enable timer 0 interrupt
 053D D28C       362       setb TR0  ; Start timer 0
 053F 22         363   ret
-0540            364   
+0540            364   ;End of Music Player Timers
 0540            365   
 0540            366   
 0540            367   Timer0_ISR:
@@ -439,7 +439,7 @@
 0586            428            
 0586            429            ; 500 milliseconds have passed.  Set a flag so the main program knows
 0586 D204       430            setb half_seconds_flag ; Let the main program know half second had passed
-0588 B28C       431            cpl TR0 ; Enable/disable timer/counter 0. This line creates a beep-silence-beep-silence sound.
+0588 B28E       431            cpl TR1 ; Enable/disable timer/counter 0. This line creates a beep-silence-beep-silence sound.
 058A            432            ; Reset to zero the milli-seconds counter, it is a 16-bit variable
 058A E4         433            clr a
 058B F541       434            mov Count1ms+0, a
@@ -480,7 +480,7 @@
 05B6 22         469       ret
 05B7            470   
 05B7            471   ;Initializes timer/counter 2 as a 16-bit counter
-05B7            472   InitTimer2:
+05B7            472   InitTimer2:;Used to measure the Period/frequency between the sensors
 05B7 75C800     473            mov T2CON, #0b_0000_0000 ; Stop timer/counter.  Set as counter (clock input is pin T2).
 05BA            474            ; Set the reload value on overflow to zero (just in case is not zero)
 05BA 75CB00     475            mov RCAP2H, #0
@@ -867,547 +867,532 @@
 084B E539       736       mov a, seed+1
 084D A2E3       737       mov c, acc.3
 084F            738       ;mov HLbit, c
-084F 4024       739       jc win_tone
-0851 020854     740       ljmp lose_tone
+084F 400C       739       jc win_tone
+0851 020857     740       ljmp lose_tone
 0854            741   ;figure out how to make it wait few seconds and then skip if none of the players pushes
-0854            742   
-0854            743   lose_tone:
-0854 1203C9     744       lcall Timer01_Init
-0857 C002       745            push AR2
-0859 7AFF       745            mov R2, #255
-085B 120079     745            lcall ?Wait_Milli_Seconds
-085E D002       745            pop AR2
-0860 C002       746            push AR2
-0862 7AFF       746            mov R2, #255
-0864 120079     746            lcall ?Wait_Milli_Seconds
-0867 D002       746            pop AR2
-0869 C002       747            push AR2
-086B 7AFF       747            mov R2, #255
-086D 120079     747            lcall ?Wait_Milli_Seconds
-0870 D002       747            pop AR2
-0872 02092F     748       ljmp start_game_nohit1
-0875            749   win_tone: 
-0875 1203B0     750       lcall Timer00_Init
-0878 C002       751            push AR2
-087A 7AFF       751            mov R2, #255
-087C 120079     751            lcall ?Wait_Milli_Seconds
-087F D002       751            pop AR2
-0881 C002       752            push AR2
-0883 7AFF       752            mov R2, #255
-0885 120079     752            lcall ?Wait_Milli_Seconds
-0888 D002       752            pop AR2
-088A C002       753            push AR2
-088C 7AFF       753            mov R2, #255
-088E 120079     753            lcall ?Wait_Milli_Seconds
-0891 D002       753            pop AR2
-0893 0208C6     754       ljmp start_game_hit1
-0896            755       
-0896            756   checkfreq1:
-0896 753464     757            mov y+0, #low (100 % 0x10000) 
-0899 753500     757            mov y+1, #high(100 % 0x10000) 
-089C 753600     757            mov y+2, #low (100 / 0x10000) 
-089F 753700     757            mov y+3, #high(100 / 0x10000) ;change made for my sensor
-08A2 120280     758       lcall x_gteq_y
-08A5 100003     759       jbc mf, freq1_nopress
-08A8 D201       760       setb p1_press
-08AA 22         761       ret
-08AB            762   
-08AB            763   freq1_nopress:
-08AB C201       764       clr p1_press
-08AD 22         765       ret
-08AE            766   
-08AE            767   checkfreq2:
-08AE 753464     768            mov y+0, #low (100 % 0x10000) 
-08B1 753500     768            mov y+1, #high(100 % 0x10000) 
-08B4 753600     768            mov y+2, #low (100 / 0x10000) 
-08B7 753700     768            mov y+3, #high(100 / 0x10000) ;change made for my sensor
-08BA 120280     769       lcall x_gteq_y
-08BD 100003     770       jbc mf, freq2_press
-08C0 D202       771       setb p2_press
-08C2 22         772       ret
-08C3            773   
-08C3            774   freq2_press:
-08C3 C202       775       clr p2_press
-08C5 22         776       ret
-08C6            777   
-08C6            778   start_game_hit1:
-08C6 120747     779       lcall forever1
-08C9 12066E     780       lcall movtox
-08CC 1201A3     781       lcall bcd2hex
-08CF 120896     782       lcall checkfreq1
-08D2 12011A     783       lcall hex2bcd
-08D5 1205E7     784       lcall DisplayBCD_LCD
-08D8 10011E     785       jbc p1_press, start_game_hit2
-08DB C28E       786       clr TR1
-08DD E4         787       clr a 
-08DE E544       788       mov a, p1points
-08E0 2401       789       add a, #0x01
-08E2 F544       790       mov p1points, a
-08E4 B4053E     791       cjne a, #0x05, start_jmp1
-08E7 E4         792       clr a
-08E8 D201       793       setb p1_press
-08EA D202       794       setb p2_press
-08EC 0208EF     795       ljmp p1win_jmp
-08EF            796   
-08EF            797   p1win_jmp:
-08EF D201       798       setb p1_press
-08F1 D202       799       setb p2_press
-08F3 0209CC     800       ljmp p1win
-08F6            801   checkfreq1_jmp:
-08F6 020896     802       ljmp checkfreq1
-08F9            803   start_game_hit2:
-08F9 120793     804       lcall forever2
-08FC 12066E     805       lcall movtox
-08FF 1201A3     806       lcall bcd2hex
-0902 1208AE     807       lcall checkfreq2
-0905 12011A     808       lcall hex2bcd
-0908 1205E7     809       lcall DisplayBCD_LCD
-090B 1002B8     810       jbc p2_press, start_game_hit1
-090E C28E       811       clr TR1
-0910 E4         812       clr a 
-0911 E545       813       mov a, p2points
-0913 2401       814       add a, #0x01
-0915 F545       815       mov p2points, a
-0917 B4050B     816       cjne a, #0x05, start_jmp1
-091A D201       817       setb p1_press
-091C D202       818       setb p2_press
-091E E4         819       clr a
-091F 020928     820       ljmp p2win_jmp
-0922            821   start_game_hit1_jmp:
-0922 0208C6     822            ljmp start_game_hit1
-0925            823            
-0925            824   start_jmp1:
-0925 0207DF     825       ljmp start_game
-0928            826   
-0928            827   p2win_jmp:
-0928 D201       828       setb p1_press
-092A D202       829       setb p2_press
-092C 020B3A     830       ljmp p2win
-092F            831   
-092F            832   start_game_nohit1:
-092F 120747     833       lcall forever1
-0932 12066E     834       lcall movtox
-0935 1201A3     835       lcall bcd2hex
-0938 120896     836       lcall checkfreq1
-093B 12011A     837       lcall hex2bcd
-093E 1205E7     838       lcall DisplayBCD_LCD
-0941 D28C       839       setb TR0
-0943 100135     840       jbc p1_press, start_game_nohit2
-0946 10040F     841       jbc half_seconds_flag, start_game_jmp
-0949 C28E       842       clr TR1
-094B C28C       843       clr TR0
-094D C204       844       clr half_seconds_flag
-094F E4         845       clr a 
-0950 E544       846       mov a, p1points
-0952 B40008     847       cjne a, #0x00, start_jmpsub1
-0955 0207DF     848       ljmp start_game
-0958            849   
-0958            850   start_game_jmp:
-0958 C28C       851       clr TR0
-095A 0207DF     852       ljmp start_game
-095D            853   
-095D            854   start_jmpsub1:
-095D            855       
-095D F530       856       mov x, a
-095F 753401     857            mov y+0, #low (1 % 0x10000) 
-0962 753500     857            mov y+1, #high(1 % 0x10000) 
-0965 753600     857            mov y+2, #low (1 / 0x10000) 
-0968 753700     857            mov y+3, #high(1 / 0x10000) 
-096B 120200     858       lcall sub32
-096E E530       859       mov a, x
-0970 D4         860       da a
-0971 F544       861       mov p1points, a
-0973 E4         862       clr a
-0974 D201       863       setb p1_press
-0976 D202       864       setb p2_press
-0978 0207DF     865       ljmp start_game
-097B            866   
-097B            867   start_game_nohit2:
-097B 120793     868       lcall forever2
-097E 12066E     869       lcall movtox
-0981 1201A3     870       lcall bcd2hex
-0984 1208AE     871       lcall checkfreq2
-0987 12011A     872       lcall hex2bcd
-098A 1205E7     873       lcall DisplayBCD_LCD
-098D D28C       874       setb TR0
-098F 10029D     875       jbc p2_press, start_game_nohit1
-0992 1004C3     876       jbc half_seconds_flag, start_game_jmp
-0995 C28E       877       clr TR1
-0997 C28C       878       clr TR0
-0999 C204       879       clr half_seconds_flag
-099B E4         880       clr a 
-099C E545       881       mov a, p2points
-099E B40003     882       cjne a, #0x00, start_jmpsub2
-09A1 0209C5     883       ljmp start_jmp
-09A4            884       
-09A4            885   start_jmpsub2:
-09A4 F530       886       mov x, a
-09A6 753401     887            mov y+0, #low (1 % 0x10000) 
-09A9 753500     887            mov y+1, #high(1 % 0x10000) 
-09AC 753600     887            mov y+2, #low (1 / 0x10000) 
-09AF 753700     887            mov y+3, #high(1 / 0x10000) 
-09B2 120200     888       lcall sub32
-09B5 E530       889       mov a, x
-09B7 D4         890       da a
-09B8 F545       891       mov p2points, a
-09BA E4         892       clr a
-09BB C201       893       clr p1_press
-09BD C202       894       clr p2_press
-09BF 0209C5     895       ljmp start_jmp
-09C2            896       
-09C2            897   start_game_nohit1_jmp:
-09C2 02092F     898            ljmp start_game_nohit1
-09C5            899   
-09C5            900   start_jmp:
-09C5 D201       901       setb p1_press
-09C7 D202       902       setb p2_press
-09C9 0207DF     903       ljmp start_game
-09CC            904   p1win:
-09CC D201       905       setb p1_press
-09CE D202       906       setb p2_press
-09D0 C0E0       907            push acc
-09D2 7408       907            mov a, #8
-09D4 14         907            dec a
-09D5 1200FF     907            lcall ?Set_Cursor_1 ; Select column and row
-09D8 D0E0       907            pop acc
-09DA C083       908            push dph
-09DC C082       908            push dpl
-09DE C0E0       908            push acc
-09E0 900038     908            mov dptr, #Winner1_message1
-09E3 1200F2     908            lcall ?Send_Constant_String
-09E6 D0E0       908            pop acc
-09E8 D082       908            pop dpl
-09EA D083       908            pop dph
-09EC C0E0       909            push acc
-09EE 7408       909            mov a, #8
-09F0 14         909            dec a
-09F1 1200FD     909            lcall ?Set_Cursor_2 ; Select column and row
-09F4 D0E0       909            pop acc
-09F6 C083       910            push dph
-09F8 C082       910            push dpl
-09FA C0E0       910            push acc
-09FC 900042     910            mov dptr, #Winner1_message2
-09FF 1200F2     910            lcall ?Send_Constant_String
-0A02 D0E0       910            pop acc
-0A04 D082       910            pop dpl
-0A06 D083       910            pop dph
-0A08 C002       911            push AR2
-0A0A 7A05       911            mov R2, #5
-0A0C 120079     911            lcall ?Wait_Milli_Seconds
-0A0F D002       911            pop AR2
-0A11            911   
-0A11 C0E0       912            push acc
-0A13 7401       912            mov a, #1
-0A15 14         912            dec a
-0A16 1200FF     912            lcall ?Set_Cursor_1 ; Select column and row
-0A19 D0E0       912            pop acc
-0A1B C083       913            push dph
-0A1D C082       913            push dpl
-0A1F C0E0       913            push acc
-0A21 90005E     913            mov dptr, #Playagain
-0A24 1200F2     913            lcall ?Send_Constant_String
-0A27 D0E0       913            pop acc
-0A29 D082       913            pop dpl
-0A2B D083       913            pop dph
-0A2D C0E0       914            push acc
-0A2F 7401       914            mov a, #1
-0A31 14         914            dec a
-0A32 1200FD     914            lcall ?Set_Cursor_2 ; Select column and row
-0A35 D0E0       914            pop acc
-0A37 C083       915            push dph
-0A39 C082       915            push dpl
-0A3B C0E0       915            push acc
-0A3D 900066     915            mov dptr, #Clear_screen
-0A40 1200F2     915            lcall ?Send_Constant_String
-0A43 D0E0       915            pop acc
-0A45 D082       915            pop dpl
-0A47 D083       915            pop dph
-0A49 C28C       916       clr TR0;stops timer
-0A4B            917       ;plays music 
-0A4B            918       ;new music ideas?
-0A4B 120527     919            lcall Timer0C2_Init
-0A4E C002       920            push AR2
-0A50 7AFF       920            mov R2, #255
-0A52 120079     920            lcall ?Wait_Milli_Seconds
-0A55 D002       920            pop AR2
-0A57 C002       921            push AR2
-0A59 7AFF       921            mov R2, #255
-0A5B 120079     921            lcall ?Wait_Milli_Seconds
-0A5E D002       921            pop AR2
-0A60 1203E2     922            lcall Timer0C_Init
-0A63 C002       923            push AR2
-0A65 7AFF       923            mov R2, #255
-0A67 120079     923            lcall ?Wait_Milli_Seconds
-0A6A D002       923            pop AR2
-0A6C 12042D     924            lcall Timer0D1_Init
-0A6F C002       925            push AR2
-0A71 7AFF       925            mov R2, #255
-0A73 120079     925            lcall ?Wait_Milli_Seconds
-0A76 D002       925            pop AR2
-0A78 12045F     926            lcall Timer0F_Init
-0A7B C002       927            push AR2
-0A7D 7AFF       927            mov R2, #255
-0A7F 120079     927            lcall ?Wait_Milli_Seconds
-0A82 D002       927            pop AR2
-0A84 120478     928            lcall Timer0F1_Init
-0A87 C002       929            push AR2
-0A89 7AFF       929            mov R2, #255
-0A8B 120079     929            lcall ?Wait_Milli_Seconds
-0A8E D002       929            pop AR2
-0A90 12045F     930            lcall Timer0F_Init
-0A93 C002       931            push AR2
-0A95 7AFF       931            mov R2, #255
-0A97 120079     931            lcall ?Wait_Milli_Seconds
-0A9A D002       931            pop AR2
-0A9C 12042D     932            lcall Timer0D1_Init
-0A9F C002       933            push AR2
-0AA1 7AFF       933            mov R2, #255
-0AA3 120079     933            lcall ?Wait_Milli_Seconds
-0AA6 D002       933            pop AR2
-0AA8 1203E2     934            lcall Timer0C_Init
-0AAB C002       935            push AR2
-0AAD 7AFF       935            mov R2, #255
-0AAF 120079     935            lcall ?Wait_Milli_Seconds
-0AB2 D002       935            pop AR2
-0AB4 C002       936            push AR2
-0AB6 7AFF       936            mov R2, #255
-0AB8 120079     936            lcall ?Wait_Milli_Seconds
-0ABB D002       936            pop AR2
-0ABD C002       937            push AR2
-0ABF 7AFF       937            mov R2, #255
-0AC1 120079     937            lcall ?Wait_Milli_Seconds
-0AC4 D002       937            pop AR2
-0AC6 12050E     938            lcall Timer0A2_Init
-0AC9 C002       939            push AR2
-0ACB 7A96       939            mov R2, #150
-0ACD 120079     939            lcall ?Wait_Milli_Seconds
-0AD0 D002       939            pop AR2
-0AD2 120414     940            lcall Timer0D_Init
-0AD5 C002       941            push AR2
-0AD7 7A96       941            mov R2, #150
-0AD9 120079     941            lcall ?Wait_Milli_Seconds
-0ADC D002       941            pop AR2
-0ADE 1203E2     942            lcall Timer0C_Init
-0AE1 C002       943            push AR2
-0AE3 7A96       943            mov R2, #150
-0AE5 120079     943            lcall ?Wait_Milli_Seconds
-0AE8 D002       943            pop AR2
-0AEA C002       944            push AR2
-0AEC 7AFF       944            mov R2, #255
-0AEE 120079     944            lcall ?Wait_Milli_Seconds
-0AF1 D002       944            pop AR2
-0AF3 C002       945            push AR2
-0AF5 7AFF       945            mov R2, #255
-0AF7 120079     945            lcall ?Wait_Milli_Seconds
-0AFA D002       945            pop AR2
-0AFC C002       946            push AR2
-0AFE 7AFF       946            mov R2, #255
-0B00 120079     946            lcall ?Wait_Milli_Seconds
-0B03 D002       946            pop AR2
-0B05 C28C       947            clr TR0
-0B07 C002       948            push AR2
-0B09 7AFF       948            mov R2, #255
-0B0B 120079     948            lcall ?Wait_Milli_Seconds
-0B0E D002       948            pop AR2
-0B10 C002       949            push AR2
-0B12 7AFF       949            mov R2, #255
-0B14 120079     949            lcall ?Wait_Milli_Seconds
-0B17 D002       949            pop AR2
-0B19 C002       950            push AR2
-0B1B 7AFF       950            mov R2, #255
-0B1D 120079     950            lcall ?Wait_Milli_Seconds
-0B20 D002       950            pop AR2
-0B22            951                    
-0B22 20C512     952       jb START_BUTTON, p1win_jmp2
-0B25 C002       953            push AR2
-0B27 7A32       953            mov R2, #50
-0B29 120079     953            lcall ?Wait_Milli_Seconds
-0B2C D002       953            pop AR2
-0B2E 20C506     954       jb START_BUTTON, p1win_jmp2
-0B31 30C5FD     955       jnb START_BUTTON, $
-0B34 020CAB     956       ljmp restart_jmp
-0B37            957            
-0B37            958   p1win_jmp2:
-0B37 0209CC     959       ljmp p1win
-0B3A            960            
-0B3A            961   p2win: 
-0B3A D201       962       setb p1_press
-0B3C D202       963       setb p2_press
-0B3E C0E0       964            push acc
-0B40 7408       964            mov a, #8
-0B42 14         964            dec a
-0B43 1200FF     964            lcall ?Set_Cursor_1 ; Select column and row
-0B46 D0E0       964            pop acc
-0B48 C083       965            push dph
-0B4A C082       965            push dpl
-0B4C C0E0       965            push acc
-0B4E 900042     965            mov dptr, #Winner1_message2
-0B51 1200F2     965            lcall ?Send_Constant_String
-0B54 D0E0       965            pop acc
-0B56 D082       965            pop dpl
-0B58 D083       965            pop dph
-0B5A C0E0       966            push acc
-0B5C 7408       966            mov a, #8
-0B5E 14         966            dec a
-0B5F 1200FD     966            lcall ?Set_Cursor_2 ; Select column and row
-0B62 D0E0       966            pop acc
-0B64 C083       967            push dph
-0B66 C082       967            push dpl
-0B68 C0E0       967            push acc
-0B6A 900038     967            mov dptr, #Winner1_message1
-0B6D 1200F2     967            lcall ?Send_Constant_String
-0B70 D0E0       967            pop acc
-0B72 D082       967            pop dpl
-0B74 D083       967            pop dph
-0B76 C002       968            push AR2
-0B78 7A32       968            mov R2, #50
-0B7A 120079     968            lcall ?Wait_Milli_Seconds
-0B7D D002       968            pop AR2
-0B7F C0E0       969            push acc
-0B81 7401       969            mov a, #1
-0B83 14         969            dec a
-0B84 1200FF     969            lcall ?Set_Cursor_1 ; Select column and row
-0B87 D0E0       969            pop acc
-0B89 C083       970            push dph
-0B8B C082       970            push dpl
-0B8D C0E0       970            push acc
-0B8F 90005E     970            mov dptr, #Playagain
-0B92 1200F2     970            lcall ?Send_Constant_String
-0B95 D0E0       970            pop acc
-0B97 D082       970            pop dpl
-0B99 D083       970            pop dph
-0B9B C0E0       971            push acc
-0B9D 7401       971            mov a, #1
-0B9F 14         971            dec a
-0BA0 1200FD     971            lcall ?Set_Cursor_2 ; Select column and row
-0BA3 D0E0       971            pop acc
-0BA5 C083       972            push dph
-0BA7 C082       972            push dpl
-0BA9 C0E0       972            push acc
-0BAB 900066     972            mov dptr, #Clear_screen
-0BAE 1200F2     972            lcall ?Send_Constant_String
-0BB1 D0E0       972            pop acc
-0BB3 D082       972            pop dpl
-0BB5 D083       972            pop dph
-0BB7 C28C       973       clr TR0;stops timer
-0BB9            974            ;plays music
-0BB9            975            
-0BB9 120527     976                    lcall Timer0C2_Init
-0BBC C002       977            push AR2
-0BBE 7AFF       977            mov R2, #255
-0BC0 120079     977            lcall ?Wait_Milli_Seconds
-0BC3 D002       977            pop AR2
-0BC5 C002       978            push AR2
-0BC7 7AFF       978            mov R2, #255
-0BC9 120079     978            lcall ?Wait_Milli_Seconds
-0BCC D002       978            pop AR2
-0BCE 1203E2     979            lcall Timer0C_Init
-0BD1 C002       980            push AR2
-0BD3 7AFF       980            mov R2, #255
-0BD5 120079     980            lcall ?Wait_Milli_Seconds
-0BD8 D002       980            pop AR2
-0BDA 12042D     981            lcall Timer0D1_Init
-0BDD C002       982            push AR2
-0BDF 7AFF       982            mov R2, #255
-0BE1 120079     982            lcall ?Wait_Milli_Seconds
-0BE4 D002       982            pop AR2
-0BE6 12045F     983            lcall Timer0F_Init
-0BE9 C002       984            push AR2
-0BEB 7AFF       984            mov R2, #255
-0BED 120079     984            lcall ?Wait_Milli_Seconds
-0BF0 D002       984            pop AR2
-0BF2 120478     985            lcall Timer0F1_Init
-0BF5 C002       986            push AR2
-0BF7 7AFF       986            mov R2, #255
-0BF9 120079     986            lcall ?Wait_Milli_Seconds
-0BFC D002       986            pop AR2
-0BFE 12045F     987            lcall Timer0F_Init
-0C01 C002       988            push AR2
-0C03 7AFF       988            mov R2, #255
-0C05 120079     988            lcall ?Wait_Milli_Seconds
-0C08 D002       988            pop AR2
-0C0A 12042D     989            lcall Timer0D1_Init
-0C0D C002       990            push AR2
-0C0F 7AFF       990            mov R2, #255
-0C11 120079     990            lcall ?Wait_Milli_Seconds
-0C14 D002       990            pop AR2
-0C16 1203E2     991            lcall Timer0C_Init
-0C19 C002       992            push AR2
-0C1B 7AFF       992            mov R2, #255
-0C1D 120079     992            lcall ?Wait_Milli_Seconds
-0C20 D002       992            pop AR2
-0C22 C002       993            push AR2
-0C24 7AFF       993            mov R2, #255
-0C26 120079     993            lcall ?Wait_Milli_Seconds
-0C29 D002       993            pop AR2
-0C2B C002       994            push AR2
-0C2D 7AFF       994            mov R2, #255
-0C2F 120079     994            lcall ?Wait_Milli_Seconds
-0C32 D002       994            pop AR2
-0C34 12050E     995            lcall Timer0A2_Init
-0C37 C002       996            push AR2
-0C39 7A96       996            mov R2, #150
-0C3B 120079     996            lcall ?Wait_Milli_Seconds
-0C3E D002       996            pop AR2
-0C40 120414     997            lcall Timer0D_Init
-0C43 C002       998            push AR2
-0C45 7A96       998            mov R2, #150
-0C47 120079     998            lcall ?Wait_Milli_Seconds
-0C4A D002       998            pop AR2
-0C4C 1203E2     999            lcall Timer0C_Init
-0C4F C002      1000            push AR2
-0C51 7A96      1000            mov R2, #150
-0C53 120079    1000            lcall ?Wait_Milli_Seconds
-0C56 D002      1000            pop AR2
-0C58 C002      1001            push AR2
-0C5A 7AFF      1001            mov R2, #255
-0C5C 120079    1001            lcall ?Wait_Milli_Seconds
-0C5F D002      1001            pop AR2
-0C61 C002      1002            push AR2
-0C63 7AFF      1002            mov R2, #255
-0C65 120079    1002            lcall ?Wait_Milli_Seconds
-0C68 D002      1002            pop AR2
-0C6A C002      1003            push AR2
-0C6C 7AFF      1003            mov R2, #255
-0C6E 120079    1003            lcall ?Wait_Milli_Seconds
-0C71 D002      1003            pop AR2
-0C73 C28C      1004            clr TR0
-0C75 C002      1005            push AR2
-0C77 7AFF      1005            mov R2, #255
-0C79 120079    1005            lcall ?Wait_Milli_Seconds
-0C7C D002      1005            pop AR2
-0C7E C002      1006            push AR2
-0C80 7AFF      1006            mov R2, #255
-0C82 120079    1006            lcall ?Wait_Milli_Seconds
-0C85 D002      1006            pop AR2
-0C87 C002      1007            push AR2
-0C89 7AFF      1007            mov R2, #255
-0C8B 120079    1007            lcall ?Wait_Milli_Seconds
-0C8E D002      1007            pop AR2
-0C90           1008                    
-0C90 20C515    1009       jb START_BUTTON, p2win_jmp1
-0C93 C002      1010            push AR2
-0C95 7A32      1010            mov R2, #50
-0C97 120079    1010            lcall ?Wait_Milli_Seconds
-0C9A D002      1010            pop AR2
-0C9C 20C509    1011       jb START_BUTTON, p2win_jmp1
-0C9F 30C5FD    1012       jnb START_BUTTON, $
-0CA2 020CAB    1013       ljmp restart_jmp
-0CA5           1014     
-0CA5           1015     
-0CA5           1016   
-0CA5           1017            
-0CA5           1018   p1win_jmp1:
-0CA5 0209CC    1019       ljmp p1win
-0CA8           1020   
-0CA8           1021   p2win_jmp1:
-0CA8 020B3A    1022       ljmp p2win
-0CAB           1023   
-0CAB           1024   restart_jmp:
-0CAB 020CAE    1025       ljmp restart_game
-0CAE           1026   
-0CAE           1027   restart_game:
-0CAE 754400    1028       mov p1points, #0x00
-0CB1 754500    1029       mov p2points, #0x00
-0CB4 0207DF    1030       ljmp start_game      ;goes back to MyProgram instead of start_game                           
-0CB7           1031   end
+0854            742   ;use timer 1 ?
+0854            743   both_sensors_not_pressed:
+0854            744   
+0854            745   
+0854 0207DF     746            ljmp start_game
+0857            747   
+0857            748   lose_tone:
+0857 1203C9     749       lcall Timer01_Init
+085A            750   
+085A 0208FE     751       ljmp start_game_nohit1
+085D            752   win_tone: 
+085D 1203B0     753       lcall Timer00_Init
+0860            754   
+0860 020893     755       ljmp start_game_hit1
+0863            756       
+0863            757   checkfreq1:
+0863 753446     758            mov y+0, #low (70 % 0x10000) 
+0866 753500     758            mov y+1, #high(70 % 0x10000) 
+0869 753600     758            mov y+2, #low (70 / 0x10000) 
+086C 753700     758            mov y+3, #high(70 / 0x10000) ;change made for my sensor
+086F 120280     759       lcall x_gteq_y
+0872 100003     760       jbc mf, freq1_nopress
+0875 D201       761       setb p1_press
+0877 22         762       ret
+0878            763   
+0878            764   freq1_nopress:
+0878 C201       765       clr p1_press
+087A 22         766       ret
+087B            767   
+087B            768   checkfreq2:
+087B 753446     769            mov y+0, #low (70 % 0x10000) 
+087E 753500     769            mov y+1, #high(70 % 0x10000) 
+0881 753600     769            mov y+2, #low (70 / 0x10000) 
+0884 753700     769            mov y+3, #high(70 / 0x10000) ;change made for my sensor
+0887 120280     770       lcall x_gteq_y
+088A 100003     771       jbc mf, freq2_press
+088D D202       772       setb p2_press
+088F 22         773       ret
+0890            774   
+0890            775   freq2_press:
+0890 C202       776       clr p2_press
+0892 22         777       ret
+0893            778       
+0893            779   
+0893            780   start_game_hit1:
+0893 120747     781       lcall forever1
+0896 12066E     782       lcall movtox
+0899 1201A3     783       lcall bcd2hex
+089C 120863     784       lcall checkfreq1
+089F 12011A     785       lcall hex2bcd
+08A2 1205E7     786       lcall DisplayBCD_LCD
+08A5 D28E       787       setb TR1
+08A7 10011E     788       jbc p1_press, start_game_hit2
+08AA C28E       789       clr TR1
+08AC E4         790       clr a 
+08AD E544       791       mov a, p1points
+08AF 2401       792       add a, #0x01
+08B1 F544       793       mov p1points, a
+08B3 B4053E     794       cjne a, #0x05, start_jmp1
+08B6 E4         795       clr a
+08B7 D201       796       setb p1_press
+08B9 D202       797       setb p2_press
+08BB 0208BE     798       ljmp p1win_jmp
+08BE            799   
+08BE            800   p1win_jmp:
+08BE D201       801       setb p1_press
+08C0 D202       802       setb p2_press
+08C2 02099B     803       ljmp p1win
+08C5            804   checkfreq1_jmp:
+08C5 020863     805       ljmp checkfreq1
+08C8            806   start_game_hit2:
+08C8 120793     807       lcall forever2
+08CB 12066E     808       lcall movtox
+08CE 1201A3     809       lcall bcd2hex
+08D1 12087B     810       lcall checkfreq2
+08D4 12011A     811       lcall hex2bcd
+08D7 1205E7     812       lcall DisplayBCD_LCD
+08DA 1002B6     813       jbc p2_press, start_game_hit1
+08DD C28E       814       clr TR1
+08DF E4         815       clr a 
+08E0 E545       816       mov a, p2points
+08E2 2401       817       add a, #0x01
+08E4 F545       818       mov p2points, a
+08E6 B4050B     819       cjne a, #0x05, start_jmp1
+08E9 D201       820       setb p1_press
+08EB D202       821       setb p2_press
+08ED E4         822       clr a
+08EE 0208F7     823       ljmp p2win_jmp
+08F1            824   start_game_hit1_jmp:
+08F1 020893     825            ljmp start_game_hit1
+08F4            826            
+08F4            827   start_jmp1:
+08F4 0207DF     828       ljmp start_game
+08F7            829   
+08F7            830   p2win_jmp:
+08F7 D201       831       setb p1_press
+08F9 D202       832       setb p2_press
+08FB 020B09     833       ljmp p2win
+08FE            834   
+08FE            835   start_game_nohit1:
+08FE 120747     836       lcall forever1
+0901 12066E     837       lcall movtox
+0904 1201A3     838       lcall bcd2hex
+0907 120863     839       lcall checkfreq1
+090A 12011A     840       lcall hex2bcd
+090D 1205E7     841       lcall DisplayBCD_LCD
+0910 D28E       842       setb TR1
+0912 100135     843       jbc p1_press, start_game_nohit2
+0915 10040F     844       jbc half_seconds_flag, start_game_jmp
+0918 C28E       845       clr TR1
+091A C28C       846       clr TR0
+091C C204       847       clr half_seconds_flag
+091E E4         848       clr a 
+091F E544       849       mov a, p1points
+0921 B40008     850       cjne a, #0x00, start_jmpsub1
+0924 0207DF     851       ljmp start_game
+0927            852   
+0927            853   start_game_jmp:
+0927 C28C       854       clr TR0
+0929 0207DF     855       ljmp start_game
+092C            856   
+092C            857   start_jmpsub1:
+092C            858       
+092C F530       859       mov x, a
+092E 753401     860            mov y+0, #low (1 % 0x10000) 
+0931 753500     860            mov y+1, #high(1 % 0x10000) 
+0934 753600     860            mov y+2, #low (1 / 0x10000) 
+0937 753700     860            mov y+3, #high(1 / 0x10000) 
+093A 120200     861       lcall sub32
+093D E530       862       mov a, x
+093F D4         863       da a
+0940 F544       864       mov p1points, a
+0942 E4         865       clr a
+0943 D201       866       setb p1_press
+0945 D202       867       setb p2_press
+0947 0207DF     868       ljmp start_game
+094A            869   
+094A            870   start_game_nohit2:
+094A 120793     871       lcall forever2
+094D 12066E     872       lcall movtox
+0950 1201A3     873       lcall bcd2hex
+0953 12087B     874       lcall checkfreq2
+0956 12011A     875       lcall hex2bcd
+0959 1205E7     876       lcall DisplayBCD_LCD
+095C D28E       877       setb TR1
+095E 10029D     878       jbc p2_press, start_game_nohit1
+0961 1004C3     879       jbc half_seconds_flag, start_game_jmp
+0964 C28E       880       clr TR1
+0966 C28C       881       clr TR0
+0968 C204       882       clr half_seconds_flag
+096A E4         883       clr a 
+096B E545       884       mov a, p2points
+096D B40003     885       cjne a, #0x00, start_jmpsub2
+0970 020994     886       ljmp start_jmp
+0973            887       
+0973            888   start_jmpsub2:
+0973 F530       889       mov x, a
+0975 753401     890            mov y+0, #low (1 % 0x10000) 
+0978 753500     890            mov y+1, #high(1 % 0x10000) 
+097B 753600     890            mov y+2, #low (1 / 0x10000) 
+097E 753700     890            mov y+3, #high(1 / 0x10000) 
+0981 120200     891       lcall sub32
+0984 E530       892       mov a, x
+0986 D4         893       da a
+0987 F545       894       mov p2points, a
+0989 E4         895       clr a
+098A C201       896       clr p1_press
+098C C202       897       clr p2_press
+098E 020994     898       ljmp start_jmp
+0991            899       
+0991            900   start_game_nohit1_jmp:
+0991 0208FE     901            ljmp start_game_nohit1
+0994            902   
+0994            903   start_jmp:
+0994 D201       904       setb p1_press
+0996 D202       905       setb p2_press
+0998 0207DF     906       ljmp start_game
+099B            907   p1win:
+099B D201       908       setb p1_press
+099D D202       909       setb p2_press
+099F C0E0       910            push acc
+09A1 7408       910            mov a, #8
+09A3 14         910            dec a
+09A4 1200FF     910            lcall ?Set_Cursor_1 ; Select column and row
+09A7 D0E0       910            pop acc
+09A9 C083       911            push dph
+09AB C082       911            push dpl
+09AD C0E0       911            push acc
+09AF 900038     911            mov dptr, #Winner1_message1
+09B2 1200F2     911            lcall ?Send_Constant_String
+09B5 D0E0       911            pop acc
+09B7 D082       911            pop dpl
+09B9 D083       911            pop dph
+09BB C0E0       912            push acc
+09BD 7408       912            mov a, #8
+09BF 14         912            dec a
+09C0 1200FD     912            lcall ?Set_Cursor_2 ; Select column and row
+09C3 D0E0       912            pop acc
+09C5 C083       913            push dph
+09C7 C082       913            push dpl
+09C9 C0E0       913            push acc
+09CB 900042     913            mov dptr, #Winner1_message2
+09CE 1200F2     913            lcall ?Send_Constant_String
+09D1 D0E0       913            pop acc
+09D3 D082       913            pop dpl
+09D5 D083       913            pop dph
+09D7 C002       914            push AR2
+09D9 7A05       914            mov R2, #5
+09DB 120079     914            lcall ?Wait_Milli_Seconds
+09DE D002       914            pop AR2
+09E0            914   
+09E0 C0E0       915            push acc
+09E2 7401       915            mov a, #1
+09E4 14         915            dec a
+09E5 1200FF     915            lcall ?Set_Cursor_1 ; Select column and row
+09E8 D0E0       915            pop acc
+09EA C083       916            push dph
+09EC C082       916            push dpl
+09EE C0E0       916            push acc
+09F0 90005E     916            mov dptr, #Playagain
+09F3 1200F2     916            lcall ?Send_Constant_String
+09F6 D0E0       916            pop acc
+09F8 D082       916            pop dpl
+09FA D083       916            pop dph
+09FC C0E0       917            push acc
+09FE 7401       917            mov a, #1
+0A00 14         917            dec a
+0A01 1200FD     917            lcall ?Set_Cursor_2 ; Select column and row
+0A04 D0E0       917            pop acc
+0A06 C083       918            push dph
+0A08 C082       918            push dpl
+0A0A C0E0       918            push acc
+0A0C 900066     918            mov dptr, #Clear_screen
+0A0F 1200F2     918            lcall ?Send_Constant_String
+0A12 D0E0       918            pop acc
+0A14 D082       918            pop dpl
+0A16 D083       918            pop dph
+0A18 C28C       919       clr TR0;stops timer
+0A1A            920       ;plays music 
+0A1A            921       ;new music ideas?
+0A1A 120527     922            lcall Timer0C2_Init
+0A1D C002       923            push AR2
+0A1F 7AFF       923            mov R2, #255
+0A21 120079     923            lcall ?Wait_Milli_Seconds
+0A24 D002       923            pop AR2
+0A26 C002       924            push AR2
+0A28 7AFF       924            mov R2, #255
+0A2A 120079     924            lcall ?Wait_Milli_Seconds
+0A2D D002       924            pop AR2
+0A2F 1203E2     925            lcall Timer0C_Init
+0A32 C002       926            push AR2
+0A34 7AFF       926            mov R2, #255
+0A36 120079     926            lcall ?Wait_Milli_Seconds
+0A39 D002       926            pop AR2
+0A3B 12042D     927            lcall Timer0D1_Init
+0A3E C002       928            push AR2
+0A40 7AFF       928            mov R2, #255
+0A42 120079     928            lcall ?Wait_Milli_Seconds
+0A45 D002       928            pop AR2
+0A47 12045F     929            lcall Timer0F_Init
+0A4A C002       930            push AR2
+0A4C 7AFF       930            mov R2, #255
+0A4E 120079     930            lcall ?Wait_Milli_Seconds
+0A51 D002       930            pop AR2
+0A53 120478     931            lcall Timer0F1_Init
+0A56 C002       932            push AR2
+0A58 7AFF       932            mov R2, #255
+0A5A 120079     932            lcall ?Wait_Milli_Seconds
+0A5D D002       932            pop AR2
+0A5F 12045F     933            lcall Timer0F_Init
+0A62 C002       934            push AR2
+0A64 7AFF       934            mov R2, #255
+0A66 120079     934            lcall ?Wait_Milli_Seconds
+0A69 D002       934            pop AR2
+0A6B 12042D     935            lcall Timer0D1_Init
+0A6E C002       936            push AR2
+0A70 7AFF       936            mov R2, #255
+0A72 120079     936            lcall ?Wait_Milli_Seconds
+0A75 D002       936            pop AR2
+0A77 1203E2     937            lcall Timer0C_Init
+0A7A C002       938            push AR2
+0A7C 7AFF       938            mov R2, #255
+0A7E 120079     938            lcall ?Wait_Milli_Seconds
+0A81 D002       938            pop AR2
+0A83 C002       939            push AR2
+0A85 7AFF       939            mov R2, #255
+0A87 120079     939            lcall ?Wait_Milli_Seconds
+0A8A D002       939            pop AR2
+0A8C C002       940            push AR2
+0A8E 7AFF       940            mov R2, #255
+0A90 120079     940            lcall ?Wait_Milli_Seconds
+0A93 D002       940            pop AR2
+0A95 12050E     941            lcall Timer0A2_Init
+0A98 C002       942            push AR2
+0A9A 7A96       942            mov R2, #150
+0A9C 120079     942            lcall ?Wait_Milli_Seconds
+0A9F D002       942            pop AR2
+0AA1 120414     943            lcall Timer0D_Init
+0AA4 C002       944            push AR2
+0AA6 7A96       944            mov R2, #150
+0AA8 120079     944            lcall ?Wait_Milli_Seconds
+0AAB D002       944            pop AR2
+0AAD 1203E2     945            lcall Timer0C_Init
+0AB0 C002       946            push AR2
+0AB2 7A96       946            mov R2, #150
+0AB4 120079     946            lcall ?Wait_Milli_Seconds
+0AB7 D002       946            pop AR2
+0AB9 C002       947            push AR2
+0ABB 7AFF       947            mov R2, #255
+0ABD 120079     947            lcall ?Wait_Milli_Seconds
+0AC0 D002       947            pop AR2
+0AC2 C002       948            push AR2
+0AC4 7AFF       948            mov R2, #255
+0AC6 120079     948            lcall ?Wait_Milli_Seconds
+0AC9 D002       948            pop AR2
+0ACB C002       949            push AR2
+0ACD 7AFF       949            mov R2, #255
+0ACF 120079     949            lcall ?Wait_Milli_Seconds
+0AD2 D002       949            pop AR2
+0AD4 C28C       950            clr TR0
+0AD6 C002       951            push AR2
+0AD8 7AFF       951            mov R2, #255
+0ADA 120079     951            lcall ?Wait_Milli_Seconds
+0ADD D002       951            pop AR2
+0ADF C002       952            push AR2
+0AE1 7AFF       952            mov R2, #255
+0AE3 120079     952            lcall ?Wait_Milli_Seconds
+0AE6 D002       952            pop AR2
+0AE8 C002       953            push AR2
+0AEA 7AFF       953            mov R2, #255
+0AEC 120079     953            lcall ?Wait_Milli_Seconds
+0AEF D002       953            pop AR2
+0AF1            954                    
+0AF1 20C512     955       jb START_BUTTON, p1win_jmp2
+0AF4 C002       956            push AR2
+0AF6 7A32       956            mov R2, #50
+0AF8 120079     956            lcall ?Wait_Milli_Seconds
+0AFB D002       956            pop AR2
+0AFD 20C506     957       jb START_BUTTON, p1win_jmp2
+0B00 30C5FD     958       jnb START_BUTTON, $
+0B03 020C7A     959       ljmp restart_jmp
+0B06            960            
+0B06            961   p1win_jmp2:
+0B06 02099B     962       ljmp p1win
+0B09            963            
+0B09            964   p2win: 
+0B09 D201       965       setb p1_press
+0B0B D202       966       setb p2_press
+0B0D C0E0       967            push acc
+0B0F 7408       967            mov a, #8
+0B11 14         967            dec a
+0B12 1200FF     967            lcall ?Set_Cursor_1 ; Select column and row
+0B15 D0E0       967            pop acc
+0B17 C083       968            push dph
+0B19 C082       968            push dpl
+0B1B C0E0       968            push acc
+0B1D 900042     968            mov dptr, #Winner1_message2
+0B20 1200F2     968            lcall ?Send_Constant_String
+0B23 D0E0       968            pop acc
+0B25 D082       968            pop dpl
+0B27 D083       968            pop dph
+0B29 C0E0       969            push acc
+0B2B 7408       969            mov a, #8
+0B2D 14         969            dec a
+0B2E 1200FD     969            lcall ?Set_Cursor_2 ; Select column and row
+0B31 D0E0       969            pop acc
+0B33 C083       970            push dph
+0B35 C082       970            push dpl
+0B37 C0E0       970            push acc
+0B39 900038     970            mov dptr, #Winner1_message1
+0B3C 1200F2     970            lcall ?Send_Constant_String
+0B3F D0E0       970            pop acc
+0B41 D082       970            pop dpl
+0B43 D083       970            pop dph
+0B45 C002       971            push AR2
+0B47 7A32       971            mov R2, #50
+0B49 120079     971            lcall ?Wait_Milli_Seconds
+0B4C D002       971            pop AR2
+0B4E C0E0       972            push acc
+0B50 7401       972            mov a, #1
+0B52 14         972            dec a
+0B53 1200FF     972            lcall ?Set_Cursor_1 ; Select column and row
+0B56 D0E0       972            pop acc
+0B58 C083       973            push dph
+0B5A C082       973            push dpl
+0B5C C0E0       973            push acc
+0B5E 90005E     973            mov dptr, #Playagain
+0B61 1200F2     973            lcall ?Send_Constant_String
+0B64 D0E0       973            pop acc
+0B66 D082       973            pop dpl
+0B68 D083       973            pop dph
+0B6A C0E0       974            push acc
+0B6C 7401       974            mov a, #1
+0B6E 14         974            dec a
+0B6F 1200FD     974            lcall ?Set_Cursor_2 ; Select column and row
+0B72 D0E0       974            pop acc
+0B74 C083       975            push dph
+0B76 C082       975            push dpl
+0B78 C0E0       975            push acc
+0B7A 900066     975            mov dptr, #Clear_screen
+0B7D 1200F2     975            lcall ?Send_Constant_String
+0B80 D0E0       975            pop acc
+0B82 D082       975            pop dpl
+0B84 D083       975            pop dph
+0B86 C28C       976       clr TR0;stops timer
+0B88            977            ;plays music
+0B88            978            
+0B88 120527     979                    lcall Timer0C2_Init
+0B8B C002       980            push AR2
+0B8D 7AFF       980            mov R2, #255
+0B8F 120079     980            lcall ?Wait_Milli_Seconds
+0B92 D002       980            pop AR2
+0B94 C002       981            push AR2
+0B96 7AFF       981            mov R2, #255
+0B98 120079     981            lcall ?Wait_Milli_Seconds
+0B9B D002       981            pop AR2
+0B9D 1203E2     982            lcall Timer0C_Init
+0BA0 C002       983            push AR2
+0BA2 7AFF       983            mov R2, #255
+0BA4 120079     983            lcall ?Wait_Milli_Seconds
+0BA7 D002       983            pop AR2
+0BA9 12042D     984            lcall Timer0D1_Init
+0BAC C002       985            push AR2
+0BAE 7AFF       985            mov R2, #255
+0BB0 120079     985            lcall ?Wait_Milli_Seconds
+0BB3 D002       985            pop AR2
+0BB5 12045F     986            lcall Timer0F_Init
+0BB8 C002       987            push AR2
+0BBA 7AFF       987            mov R2, #255
+0BBC 120079     987            lcall ?Wait_Milli_Seconds
+0BBF D002       987            pop AR2
+0BC1 120478     988            lcall Timer0F1_Init
+0BC4 C002       989            push AR2
+0BC6 7AFF       989            mov R2, #255
+0BC8 120079     989            lcall ?Wait_Milli_Seconds
+0BCB D002       989            pop AR2
+0BCD 12045F     990            lcall Timer0F_Init
+0BD0 C002       991            push AR2
+0BD2 7AFF       991            mov R2, #255
+0BD4 120079     991            lcall ?Wait_Milli_Seconds
+0BD7 D002       991            pop AR2
+0BD9 12042D     992            lcall Timer0D1_Init
+0BDC C002       993            push AR2
+0BDE 7AFF       993            mov R2, #255
+0BE0 120079     993            lcall ?Wait_Milli_Seconds
+0BE3 D002       993            pop AR2
+0BE5 1203E2     994            lcall Timer0C_Init
+0BE8 C002       995            push AR2
+0BEA 7AFF       995            mov R2, #255
+0BEC 120079     995            lcall ?Wait_Milli_Seconds
+0BEF D002       995            pop AR2
+0BF1 C002       996            push AR2
+0BF3 7AFF       996            mov R2, #255
+0BF5 120079     996            lcall ?Wait_Milli_Seconds
+0BF8 D002       996            pop AR2
+0BFA C002       997            push AR2
+0BFC 7AFF       997            mov R2, #255
+0BFE 120079     997            lcall ?Wait_Milli_Seconds
+0C01 D002       997            pop AR2
+0C03 12050E     998            lcall Timer0A2_Init
+0C06 C002       999            push AR2
+0C08 7A96       999            mov R2, #150
+0C0A 120079     999            lcall ?Wait_Milli_Seconds
+0C0D D002       999            pop AR2
+0C0F 120414    1000            lcall Timer0D_Init
+0C12 C002      1001            push AR2
+0C14 7A96      1001            mov R2, #150
+0C16 120079    1001            lcall ?Wait_Milli_Seconds
+0C19 D002      1001            pop AR2
+0C1B 1203E2    1002            lcall Timer0C_Init
+0C1E C002      1003            push AR2
+0C20 7A96      1003            mov R2, #150
+0C22 120079    1003            lcall ?Wait_Milli_Seconds
+0C25 D002      1003            pop AR2
+0C27 C002      1004            push AR2
+0C29 7AFF      1004            mov R2, #255
+0C2B 120079    1004            lcall ?Wait_Milli_Seconds
+0C2E D002      1004            pop AR2
+0C30 C002      1005            push AR2
+0C32 7AFF      1005            mov R2, #255
+0C34 120079    1005            lcall ?Wait_Milli_Seconds
+0C37 D002      1005            pop AR2
+0C39 C002      1006            push AR2
+0C3B 7AFF      1006            mov R2, #255
+0C3D 120079    1006            lcall ?Wait_Milli_Seconds
+0C40 D002      1006            pop AR2
+0C42 C28C      1007            clr TR0
+0C44 C002      1008            push AR2
+0C46 7AFF      1008            mov R2, #255
+0C48 120079    1008            lcall ?Wait_Milli_Seconds
+0C4B D002      1008            pop AR2
+0C4D C002      1009            push AR2
+0C4F 7AFF      1009            mov R2, #255
+0C51 120079    1009            lcall ?Wait_Milli_Seconds
+0C54 D002      1009            pop AR2
+0C56 C002      1010            push AR2
+0C58 7AFF      1010            mov R2, #255
+0C5A 120079    1010            lcall ?Wait_Milli_Seconds
+0C5D D002      1010            pop AR2
+0C5F           1011                    
+0C5F 20C515    1012       jb START_BUTTON, p2win_jmp1
+0C62 C002      1013            push AR2
+0C64 7A32      1013            mov R2, #50
+0C66 120079    1013            lcall ?Wait_Milli_Seconds
+0C69 D002      1013            pop AR2
+0C6B 20C509    1014       jb START_BUTTON, p2win_jmp1
+0C6E 30C5FD    1015       jnb START_BUTTON, $
+0C71 020C7A    1016       ljmp restart_jmp
+0C74           1017     
+0C74           1018     
+0C74           1019   
+0C74           1020            
+0C74           1021   p1win_jmp1:
+0C74 02099B    1022       ljmp p1win
+0C77           1023   
+0C77           1024   p2win_jmp1:
+0C77 020B09    1025       ljmp p2win
+0C7A           1026   
+0C7A           1027   restart_jmp:
+0C7A 020C7D    1028       ljmp restart_game
+0C7D           1029   
+0C7D           1030   restart_game:
+0C7D 754400    1031       mov p1points, #0x00
+0C80 754500    1032       mov p2points, #0x00
+0C83 0207DF    1033       ljmp start_game      ;goes back to MyProgram instead of start_game                           
+0C86           1034   end

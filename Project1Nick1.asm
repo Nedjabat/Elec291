@@ -15,7 +15,7 @@ TIMER00_RATE   EQU 6000     ; 2100Hz Win Tone, made very high freq to check
 TIMER00_RELOAD EQU ((65536-(CLK/TIMER00_RATE)))
 TIMER01_RATE   EQU 2000  ;2000Hz Lose Tone, made very low freq to check
 TIMER01_RELOAD EQU ((65536-(CLK/TIMER01_RATE))) ;2000Hz frequency lose frequency
-TIMER2_RATE   EQU 4200                 ;2100Hz frequency win frequency
+TIMER2_RATE   EQU 4200                 
 TIMER2_RELOAD EQU ((65536-(CLK/TIMER2_RATE)))
 
 ;Music player
@@ -151,7 +151,7 @@ Timer01_Init:
     setb ET0  ; Enable timer 0 interrupt
     setb TR0  ; Start timer 0
 	ret
-
+;Music Player Timers
 Timer0C_Init:
 mov a, TMOD
 anl a, #0xf0 ; Clear the bits for timer 0
@@ -361,7 +361,7 @@ mov RL0, #low(TIMER0C2_RELOAD)
     setb ET0  ; Enable timer 0 interrupt
     setb TR0  ; Start timer 0
 ret
-
+;End of Music Player Timers
 
 
 Timer0_ISR:
@@ -428,7 +428,7 @@ Inc_Done:
 	
 	; 500 milliseconds have passed.  Set a flag so the main program knows
 	setb half_seconds_flag ; Let the main program know half second had passed
-	cpl TR0 ; Enable/disable timer/counter 0. This line creates a beep-silence-beep-silence sound.
+	cpl TR1 ; Enable/disable timer/counter 0. This line creates a beep-silence-beep-silence sound.
 	; Reset to zero the milli-seconds counter, it is a 16-bit variable
 	clr a
 	mov Count1ms+0, a
@@ -469,7 +469,7 @@ X1: djnz R0, X1 ; 3 cycles->3*45.21123ns*166=22.51519us
     ret
 
 ;Initializes timer/counter 2 as a 16-bit counter
-InitTimer2:
+InitTimer2:;Used to measure the Period/frequency between the sensors
 	mov T2CON, #0b_0000_0000 ; Stop timer/counter.  Set as counter (clock input is pin T2).
 	; Set the reload value on overflow to zero (just in case is not zero)
 	mov RCAP2H, #0
@@ -739,22 +739,23 @@ start_game:
     jc win_tone
     ljmp lose_tone
 ;figure out how to make it wait few seconds and then skip if none of the players pushes
+;use timer 1 ?
+both_sensors_not_pressed:
+
+
+	ljmp start_game
 
 lose_tone:
     lcall Timer01_Init
-    		Wait_Milli_Seconds(#255)
-    		Wait_Milli_Seconds(#255)
-    		Wait_Milli_Seconds(#255)
+
     ljmp start_game_nohit1
 win_tone: 
     lcall Timer00_Init
-    		Wait_Milli_Seconds(#255)
-    		Wait_Milli_Seconds(#255)
-    		Wait_Milli_Seconds(#255)
+
     ljmp start_game_hit1
     
 checkfreq1:
-    load_y(100);change made for my sensor
+    load_y(70);change made for my sensor
     lcall x_gteq_y
     jbc mf, freq1_nopress
     setb p1_press
@@ -765,7 +766,7 @@ freq1_nopress:
     ret
 
 checkfreq2:
-    load_y(100);change made for my sensor
+    load_y(70);change made for my sensor
     lcall x_gteq_y
     jbc mf, freq2_press
     setb p2_press
@@ -774,6 +775,7 @@ checkfreq2:
 freq2_press:
     clr p2_press
     ret
+    
 
 start_game_hit1:
     lcall forever1
@@ -782,6 +784,7 @@ start_game_hit1:
     lcall checkfreq1
     lcall hex2bcd
     lcall DisplayBCD_LCD
+    setb TR1
     jbc p1_press, start_game_hit2
     clr TR1
     clr a 
@@ -836,7 +839,7 @@ start_game_nohit1:
     lcall checkfreq1
     lcall hex2bcd
     lcall DisplayBCD_LCD
-    setb TR0
+    setb TR1
     jbc p1_press, start_game_nohit2
     jbc half_seconds_flag, start_game_jmp
     clr TR1
@@ -871,7 +874,7 @@ start_game_nohit2:
     lcall checkfreq2
     lcall hex2bcd
     lcall DisplayBCD_LCD
-    setb TR0
+    setb TR1
     jbc p2_press, start_game_nohit1
     jbc half_seconds_flag, start_game_jmp
     clr TR1
