@@ -143,7 +143,6 @@ Timer2_Init:
 ;---------------------------------;
 Timer0_Init:
 
-	mov TCON, #0 ; Stop timer/counter.  Autoreload mode.
 	mov TH0, #high(TIMER0_RELOAD)
 	mov TL0, #low(TIMER0_RELOAD)
 	; Set the reload value
