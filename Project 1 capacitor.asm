@@ -20,18 +20,13 @@ TIMER2_RELOAD EQU ((65536-(CLK/TIMER2_RATE)))
 org 0000H
    ljmp MyProgram
 
-org 0x000B
-	reti
-
-org 0x0013
-	reti
 
 ; Timer/Counter 1 overflow interrupt vector (not used in this code)
 org 0x001B
 	ljmp Timer1_ISR
 
 
-DSEG at 30H
+DSEG at 0x30
 x:   ds 4
 y:   ds 4
 seed: ds 4  
@@ -41,6 +36,10 @@ p2points: ds 1
 freq1: ds 4
 freq2: ds 4
 counter: ds 4
+Period_A: ds 2
+Period_B: ds 2
+bcd1: ds 5
+bcd2: ds 5
 
 BSEG
 mf: dbit 1
@@ -135,11 +134,12 @@ X1: djnz R0, X1 ; 3 cycles->3*45.21123ns*166=22.51519us
 
 ;Initializes timer/counter 2 as a 16-bit counter
 InitTimer2:
-	mov T2CON, #0b_0000_0010 ; Stop timer/counter.  Set as counter (clock input is pin T2).
+	mov T2CON, #0b_0000_0000 ; Stop timer/counter.  Set as counter (clock input is pin T2).
 	; Set the reload value on overflow to zero (just in case is not zero)
 	mov RCAP2H, #0
 	mov RCAP2L, #0
-    setb P1.0 ; P1.0 is connected to T2.  Make sure it can be used as input.
+    setb P2.0 ; Pin is used as input
+    setb P2.1  ; P1.0 is connected to T2.  Make sure it can be used as input.
     ret
 
 InitTimer0:
@@ -152,6 +152,7 @@ InitTimer0:
     ret
 
 ;Converts the hex number in TH2-TL2 to BCD in R2-R1-R0
+
 hex2bcd1:
 	clr a
     mov R0, #0  ;Set BCD result to 00000000 
@@ -159,7 +160,7 @@ hex2bcd1:
     mov R2, #0
     mov R3, #16 ;Loop counter.
 
-hex2bcd_loop:
+hex2bcd_loop1:
     mov a, TL2 ;Shift TH0-TL0 left through carry
     rlc a
     mov TL2, a
@@ -167,41 +168,6 @@ hex2bcd_loop:
     mov a, TH2
     rlc a
     mov TH2, a
-      
-	; Perform bcd + bcd + carry
-	; using BCD numbers
-	mov a, R0
-	addc a, R0
-	da a
-	mov R0, a
-	
-	mov a, R1
-	addc a, R1
-	da a
-	mov R1, a
-	
-	mov a, R2
-	addc a, R2
-	da a
-	mov R2, a
-	
-	djnz R3, hex2bcd_loop
-	ret
-hex2bcd3:
-	clr a
-    mov R0, #0  ;Set BCD result to 00000000 
-    mov R1, #0
-    mov R2, #0
-    mov R3, #16 ;Loop counter.
-
-hex2bcd_loop1:
-    mov a, TL0 ;Shift TH0-TL0 left through carry
-    rlc a
-    mov TL0, a
-    
-    mov a, TH0
-    rlc a
-    mov TH0, a
       
 	; Perform bcd + bcd + carry
 	; using BCD numbers
@@ -322,12 +288,13 @@ movtox:
 MyProgram:
     ; Initialize the hardware:
     mov SP, #7FH
+    lcall InitTimer2
+    lcall LCD_4BIT
+    lcall InitTimer0
     Set_Cursor(1, 1)
     Send_Constant_String(#Initial_Message)
     Set_Cursor(2, 1)
     Send_Constant_String(#Initial_Message2)
-    lcall InitTimer2
-    lcall InitTimer0
     setb EA
     jb P4.5, $
     mov seed+0, TH2
@@ -338,63 +305,83 @@ MyProgram:
     mov p2points, #0x00
     
 forever:
+    Set_Cursor(1, 9)
+    Display_BCD(p1points)
+    Set_Cursor(2, 9)
+    Display_BCD(p2points)
     ; Measure the frequency applied to pin T2
+    ; Measure the period applied to pin P2.0
     clr TR2 ; Stop counter 2
-    clr TR0
-    clr a
-    mov TL0, a
-    mov TH0, a
-    mov TL2, a
-    mov TH2, a
-    clr TF2
-    clr TF0
-    setb TR2 ; Start counter 2
-    setb TR0
-    lcall Wait1s ; Wait one second
-    clr TR2 ; Stop counter 2, TH2-TL2 has the frequency
-    clr TR0
-
-    Set_Cursor(1, 12)
+    mov TL2, #0
+    mov TH2, #0
+    jb P2.0, $
+    jnb P2.0, $
+    setb TR2 ; Start counter 0
+    jb P2.0, $
+    jnb P2.0, $
+    clr TR2 ; Stop counter 2, TH2-TL2 has the period
+    ; save the period of P2.0 for later use
+	; Convert the result to BCD and display on LCD
+	Set_Cursor(1, 11)
 	lcall hex2bcd1
     lcall DisplayBCD_LCD
-    Set_Cursor(2,12)
-    lcall hex2bcd3
+    
+    ; Measure the period applied to pin P2.1
+    clr TR2 ; Stop counter 2
+    mov TL2, #0
+    mov TH2, #0
+    jb P2.1, $
+    jnb P2.1, $
+    setb TR2 ; Start counter 0
+    jb P2.1, $
+    jnb P2.1, $
+    clr TR2 ; Stop counter 2, TH2-TL2 has the period
+    ; save the period of P2.1 for later use
+	; Convert the result to BCD and display on LCD
+	Set_Cursor(2, 11)
+	lcall hex2bcd1
     lcall DisplayBCD_LCD
-    ljmp start_game
 	; Convert the result to BCD and display on LCD
 	
-    sjmp forever ;  Repeat! 
+    ljmp forever ;  Repeat! 
 
 forever1:
+    ; Measure the period applied to pin P2.0
     clr TR2 ; Stop counter 2
-    clr a
-    clr TR0
-    mov TL0, a
-    mov TH0, a
-    mov TL2, a
-    mov TH2, a
-    clr TF2
-    clr TF0
-    setb TR2 ; Start counter 2
-    setb TR0
-    lcall Wait1s ; Wait one second
-    clr TR2 ; Stop counter 2, TH2-TL2 has the frequency
-    clr TR0
-
-    Set_Cursor(1, 12)
+    mov TL2, #0
+    mov TH2, #0
+    jb P2.0, $
+    jnb P2.0, $
+    setb TR2 ; Start counter 0
+    jb P2.0, $
+    jnb P2.0, $
+    clr TR2 ; Stop counter 2, TH2-TL2 has the period
+    ; save the period of P2.0 for later use
+	; Convert the result to BCD and display on LCD
+	Set_Cursor(1, 11)
 	lcall hex2bcd1
     lcall DisplayBCD_LCD
-    Set_Cursor(2,12)
-    lcall hex2bcd3
+    ret
+forever2:
+    ; Measure the period applied to pin P2.1
+    clr TR2 ; Stop counter 2
+    mov TL2, #0
+    mov TH2, #0
+    jb P2.1, $
+    jnb P2.1, $
+    setb TR2 ; Start counter 0
+    jb P2.1, $
+    jnb P2.1, $
+    clr TR2 ; Stop counter 2, TH2-TL2 has the period
+    ; save the period of P2.1 for later use
+	; Convert the result to BCD and display on LCD
+	Set_Cursor(2, 11)
+	lcall hex2bcd1
     lcall DisplayBCD_LCD
     ret
 start_game:
     setb p1_press
     setb p2_press   
-    Set_Cursor(1, 9)
-    Display_BCD(p1points)
-    Set_Cursor(2, 9)
-    Display_BCD(p2points)
     lcall random
     lcall wait_random
     mov a, seed+1
@@ -415,7 +402,7 @@ win_tone:
     
 checkfreq1:
     load_y(4745)
-    lcall x_lteq_y
+    lcall x_gteq_y
     jbc mf, freq1_press
     ret
 
@@ -425,8 +412,7 @@ freq1_press:
 
 checkfreq2:
     load_y(4745)
-    mov x, freq2
-    lcall x_lteq_y
+    lcall x_gteq_y
     jbc mf, freq2_press
     ret
 
@@ -458,7 +444,9 @@ p1win_jmp:
 checkfreq1_jmp:
     ljmp checkfreq1
 start_game_hit2:
-    lcall forever1
+    lcall forever2
+    lcall movtox
+    lcall bcd2hex
     lcall checkfreq2
     jbc p2_press, start_game_hit1
     clr TR1
