@@ -186,7 +186,7 @@
 03FA 22         171       ret
 03FB            172   
 03FB            173   ;Converts the hex number in TH2-TL2 to BCD in R2-R1-R0
-03FB            174   hex2bcd:
+03FB            174   hex2bcd1:
 03FB E4         175            clr a
 03FC 7800       176       mov R0, #0  ;Set BCD result to 00000000 
 03FE 7900       177       mov R1, #0
@@ -376,11 +376,11 @@
 053E 3080FD     304       jnb START_BUTTON, $
 0541            305            ; Convert the result to BCD and display on LCD
 0541 C0E0       306            push acc
-0543 7401       306            mov a, #1
+0543 740F       306            mov a, #15
 0545 14         306            dec a
 0546 12010F     306            lcall ?Set_Cursor_2 ; Select column and row
 0549 D0E0       306            pop acc
-054B 1203FB     307            lcall hex2bcd
+054B 1203FB     307            lcall hex2bcd1
 054E 12041D     308       lcall DisplayBCD_LCD
 0551 80A6       309       sjmp forever ;  Repeat! 
 0553            310   

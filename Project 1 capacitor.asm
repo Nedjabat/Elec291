@@ -171,7 +171,7 @@ InitTimer2:
     ret
 
 ;Converts the hex number in TH2-TL2 to BCD in R2-R1-R0
-hex2bcd:
+hex2bcd1:
 	clr a
     mov R0, #0  ;Set BCD result to 00000000 
     mov R1, #0
@@ -303,8 +303,8 @@ forever:
     jb START_BUTTON, start_game
     jnb START_BUTTON, $
 	; Convert the result to BCD and display on LCD
-	Set_Cursor(2, 1)
-	lcall hex2bcd
+	Set_Cursor(2, 15)
+	lcall hex2bcd1
     lcall DisplayBCD_LCD
     sjmp forever ;  Repeat! 
 
