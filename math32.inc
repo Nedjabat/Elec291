@@ -15,54 +15,6 @@ CSEG
 ; 10-digit packed BCD in 'bcd' using the
 ; double-dabble algorithm.
 ;---------------------------------------------------
-hex2bcd:
-	push acc
-	push psw
-	push AR0
-	push AR1
-	push AR2
-	
-	clr a
-	mov bcd+0, a ; Initialize BCD to 00-00-00-00-00 
-	mov bcd+1, a
-	mov bcd+2, a
-	mov bcd+3, a
-	mov bcd+4, a
-	mov r2, #32  ; Loop counter.
-
-hex2bcd_L0:
-	; Shift binary left	
-	mov a, x+3
-	mov c, acc.7 ; This way x remains unchanged!
-	mov r1, #4
-	mov r0, #(x+0)
-hex2bcd_L1:
-	mov a, @r0
-	rlc a
-	mov @r0, a
-	inc r0
-	djnz r1, hex2bcd_L1
-    
-	; Perform bcd + bcd + carry using BCD arithmetic
-	mov r1, #5
-	mov r0, #(bcd+0)
-hex2bcd_L2:   
-	mov a, @r0
-	addc a, @r0
-	da a
-	mov @r0, a
-	inc r0
-	djnz r1, hex2bcd_L2
-
-	djnz r2, hex2bcd_L0
-
-	pop AR2
-	pop AR1
-	pop AR0
-	pop psw
-	pop acc
-	ret
-
 
 ;----------------------------------------------------
 ; hex2bcd2:
