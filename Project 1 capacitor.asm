@@ -367,6 +367,7 @@ freq2_press:
 
 start_game_hit1:
     lcall forever1
+    Display_BCD(p1_press)
     jb p1_press, checkfreq2
     Wait_Milli_Seconds(#50)
     jb p1_press, checkfreq2
