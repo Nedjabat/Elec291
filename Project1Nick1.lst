@@ -9,7 +9,7 @@
 0000             11   CLK           EQU 22118400
 0000             12   TIMER1_RATE   EQU 100     ; 1000Hz, for a timer tick of 1ms
 0000             13   TIMER1_RELOAD EQU ((65536-(CLK/TIMER1_RATE)))
-0000             14   TIMER00_RATE   EQU 6000     ; 2100Hz Win Tone, made very high freq to check
+0000             14   TIMER00_RATE   EQU 2100     ; 2100Hz Win Tone, made very high freq to check
 0000             15   TIMER00_RELOAD EQU ((65536-(CLK/TIMER00_RATE)))
 0000             16   TIMER01_RATE   EQU 2000  ;2000Hz Lose Tone, made very low freq to check
 0000             17   TIMER01_RELOAD EQU ((65536-(CLK/TIMER01_RATE))) ;2000Hz frequency lose frequency
@@ -131,11 +131,11 @@
 03B2 54F0       120            anl a, #0xf0 ; Clear the bits for timer 0
 03B4 4401       121            orl a, #0x01 ; Configure timer 0 as 16-timer
 03B6 F589       122            mov TMOD, a
-03B8 758CF1     123            mov TH0, #high(TIMER00_RELOAD)
-03BB 758A9A     124            mov TL0, #low(TIMER00_RELOAD)
+03B8 758CD6     123            mov TH0, #high(TIMER00_RELOAD)
+03BB 758ADC     124            mov TL0, #low(TIMER00_RELOAD)
 03BE            125            ; Set autoreload value
-03BE 75F4F1     126            mov RH0, #high(TIMER00_RELOAD)
-03C1 75F29A     127            mov RL0, #low(TIMER00_RELOAD)
+03BE 75F4D6     126            mov RH0, #high(TIMER00_RELOAD)
+03C1 75F2DC     127            mov RL0, #low(TIMER00_RELOAD)
 03C4            128            ; Enable the timer and interrupts
 03C4 D2A9       129       setb ET0  ; Enable timer 0 interrupt
 03C6 D28C       130       setb TR0  ; Start timer 0
@@ -886,10 +886,10 @@
 0860 020893     755       ljmp start_game_hit1
 0863            756       
 0863            757   checkfreq1:
-0863 753446     758            mov y+0, #low (70 % 0x10000) 
-0866 753500     758            mov y+1, #high(70 % 0x10000) 
-0869 753600     758            mov y+2, #low (70 / 0x10000) 
-086C 753700     758            mov y+3, #high(70 / 0x10000) ;change made for my sensor
+0863 753488     758            mov y+0, #low (5000 % 0x10000) 
+0866 753513     758            mov y+1, #high(5000 % 0x10000) 
+0869 753600     758            mov y+2, #low (5000 / 0x10000) 
+086C 753700     758            mov y+3, #high(5000 / 0x10000) ;change made for my sensor
 086F 120280     759       lcall x_gteq_y
 0872 100003     760       jbc mf, freq1_nopress
 0875 D201       761       setb p1_press
@@ -900,10 +900,10 @@
 087A 22         766       ret
 087B            767   
 087B            768   checkfreq2:
-087B 753446     769            mov y+0, #low (70 % 0x10000) 
-087E 753500     769            mov y+1, #high(70 % 0x10000) 
-0881 753600     769            mov y+2, #low (70 / 0x10000) 
-0884 753700     769            mov y+3, #high(70 / 0x10000) ;change made for my sensor
+087B 753488     769            mov y+0, #low (5000 % 0x10000) 
+087E 753513     769            mov y+1, #high(5000 % 0x10000) 
+0881 753600     769            mov y+2, #low (5000 / 0x10000) 
+0884 753700     769            mov y+3, #high(5000 / 0x10000) ;change made for my sensor
 0887 120280     770       lcall x_gteq_y
 088A 100003     771       jbc mf, freq2_press
 088D D202       772       setb p2_press

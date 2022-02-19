@@ -10,12 +10,12 @@ UPDOWN        	equ P0.1
 
 CLK           EQU 22118400
 TIMER1_RATE   EQU 100     ; 1000Hz, for a timer tick of 1ms
-TIMER1_RELOAD EQU ((65536-(CLK/TIMER1_RATE)))
-TIMER00_RATE   EQU 2100     ; 2100Hz Win Tone, made very high freq to check
-TIMER00_RELOAD EQU ((65536-(CLK/TIMER00_RATE)))
+TIMER1_RELOAD EQU ((65536-(CLK/TIMER1_RATE)))     ; 2100Hz Win Tone
+TIMER00_RATE   EQU 6000     ; 2100Hz Win Tone, made very high freq to check
+TIMER00_RELOAD EQU ((65536-(CLK/TIMER00_RATE))) 
 TIMER01_RATE   EQU 2000  ;2000Hz Lose Tone, made very low freq to check
 TIMER01_RELOAD EQU ((65536-(CLK/TIMER01_RATE))) ;2000Hz frequency lose frequency
-TIMER2_RATE   EQU 4200                 
+TIMER2_RATE   EQU 4200                 ;2100Hz frequency win frequency
 TIMER2_RELOAD EQU ((65536-(CLK/TIMER2_RATE)))
 
 ;Music player
@@ -97,6 +97,7 @@ LCD_D6 equ P3.6
 LCD_D7 equ P3.7
 SOUND_OUT equ P1.1
 
+
 Initial_Message:  db 'Player1:    ', 0
 Initial_Message2: db 'Player2:    ', 0
 
@@ -151,7 +152,8 @@ Timer01_Init:
     setb ET0  ; Enable timer 0 interrupt
     setb TR0  ; Start timer 0
 	ret
-;Music Player Timers
+	
+
 Timer0C_Init:
 mov a, TMOD
 anl a, #0xf0 ; Clear the bits for timer 0
@@ -361,7 +363,7 @@ mov RL0, #low(TIMER0C2_RELOAD)
     setb ET0  ; Enable timer 0 interrupt
     setb TR0  ; Start timer 0
 ret
-;End of Music Player Timers
+
 
 
 Timer0_ISR:
@@ -428,7 +430,7 @@ Inc_Done:
 	
 	; 500 milliseconds have passed.  Set a flag so the main program knows
 	setb half_seconds_flag ; Let the main program know half second had passed
-	cpl TR1 ; Enable/disable timer/counter 0. This line creates a beep-silence-beep-silence sound.
+	cpl TR0 ; Enable/disable timer/counter 0. This line creates a beep-silence-beep-silence sound.
 	; Reset to zero the milli-seconds counter, it is a 16-bit variable
 	clr a
 	mov Count1ms+0, a
@@ -469,7 +471,7 @@ X1: djnz R0, X1 ; 3 cycles->3*45.21123ns*166=22.51519us
     ret
 
 ;Initializes timer/counter 2 as a 16-bit counter
-InitTimer2:;Used to measure the Period/frequency between the sensors
+InitTimer2:
 	mov T2CON, #0b_0000_0000 ; Stop timer/counter.  Set as counter (clock input is pin T2).
 	; Set the reload value on overflow to zero (just in case is not zero)
 	mov RCAP2H, #0
@@ -624,6 +626,7 @@ MyProgram:
     Set_Cursor(2, 1)
     Send_Constant_String(#Initial_Message2)
     setb EA
+    setb TR0
     setb TR2;random number
     setb half_seconds_flag
     jb P4.5, $
@@ -717,6 +720,10 @@ forever2:
 start_game:
     setb p1_press
     setb p2_press 
+    ;Set_Cursor(1, 1)
+    ;Send_Constant_String(#Initial_Message);put initial message here too
+    ;Set_Cursor(2, 1)
+    ;Send_Constant_String(#Initial_Message2)	
     Set_Cursor(1, 1)
     Send_Constant_String(#Initial_Message);put initial message here too
     Set_Cursor(2, 1)
@@ -738,24 +745,25 @@ start_game:
     ;mov HLbit, c
     jc win_tone
     ljmp lose_tone
+
 ;figure out how to make it wait few seconds and then skip if none of the players pushes
-;use timer 1 ?
-both_sensors_not_pressed:
-
-
-	ljmp start_game
 
 lose_tone:
     lcall Timer01_Init
-
+    		Wait_Milli_Seconds(#255)
+    		Wait_Milli_Seconds(#255)
+    		Wait_Milli_Seconds(#255)
     ljmp start_game_nohit1
 win_tone: 
     lcall Timer00_Init
-
+    		Wait_Milli_Seconds(#255)
+    		Wait_Milli_Seconds(#255)
+    		Wait_Milli_Seconds(#255)
     ljmp start_game_hit1
     
 checkfreq1:
-    load_y(5000);change made for my sensor
+    load_y(4645)
+    load_y(100);change made for my sensor
     lcall x_gteq_y
     jbc mf, freq1_nopress
     setb p1_press
@@ -766,7 +774,8 @@ freq1_nopress:
     ret
 
 checkfreq2:
-    load_y(5000);change made for my sensor
+    load_y(4650)
+    load_y(100);change made for my sensor
     lcall x_gteq_y
     jbc mf, freq2_press
     setb p2_press
@@ -775,7 +784,6 @@ checkfreq2:
 freq2_press:
     clr p2_press
     ret
-    
 
 start_game_hit1:
     lcall forever1
@@ -784,7 +792,6 @@ start_game_hit1:
     lcall checkfreq1
     lcall hex2bcd
     lcall DisplayBCD_LCD
-    setb TR1
     jbc p1_press, start_game_hit2
     clr TR1
     clr a 
@@ -839,15 +846,176 @@ start_game_nohit1:
     lcall checkfreq1
     lcall hex2bcd
     lcall DisplayBCD_LCD
-    setb TR1
-    jbc p1_press, start_game_nohit2
-    jbc half_seconds_flag, start_game_jmp
-    clr TR1
-    clr TR0
-    clr half_seconds_flag
+    setb TR0
+    ;jbc p1_press, start_game_nohit2
+ ;   jbc half_seconds_flag, start_game_jmp
+    Wait_Milli_Seconds(#10)
+    lcall forever1
+    lcall movtox
+    lcall bcd2hex
+    lcall checkfreq1
+    lcall hex2bcd
+    lcall DisplayBCD_LCD
+    lcall forever2
+    lcall movtox
+    lcall bcd2hex
+    lcall checkfreq2
+    lcall hex2bcd
+    lcall DisplayBCD_LCD
+      Wait_Milli_Seconds(#10)
+    lcall forever1
+    lcall movtox
+    lcall bcd2hex
+    lcall checkfreq1
+    lcall hex2bcd
+    lcall DisplayBCD_LCD
+    lcall forever2
+    lcall movtox
+    lcall bcd2hex
+    lcall checkfreq2
+    lcall hex2bcd
+    lcall DisplayBCD_LCD
+      Wait_Milli_Seconds(#10)
+    lcall forever1
+    lcall movtox
+    lcall bcd2hex
+    lcall checkfreq1
+    lcall hex2bcd
+    lcall DisplayBCD_LCD
+    lcall forever2
+    lcall movtox
+    lcall bcd2hex
+    lcall checkfreq2
+    lcall hex2bcd
+    lcall DisplayBCD_LCD
+      Wait_Milli_Seconds(#10)
+    lcall forever1
+    lcall movtox
+    lcall bcd2hex
+    lcall checkfreq1
+    lcall hex2bcd
+    lcall DisplayBCD_LCD
+    lcall forever2
+    lcall movtox
+    lcall bcd2hex
+    lcall checkfreq2
+    lcall hex2bcd
+    lcall DisplayBCD_LCD
+      Wait_Milli_Seconds(#10)
+    lcall forever1
+    lcall movtox
+    lcall bcd2hex
+    lcall checkfreq1
+    lcall hex2bcd
+    lcall DisplayBCD_LCD
+    lcall forever2
+    lcall movtox
+    lcall bcd2hex
+    lcall checkfreq2
+    lcall hex2bcd
+    lcall DisplayBCD_LCD
+      Wait_Milli_Seconds(#10)
+    lcall forever1
+    lcall movtox
+    lcall bcd2hex
+    lcall checkfreq1
+    lcall hex2bcd
+    lcall DisplayBCD_LCD
+    lcall forever2
+    lcall movtox
+    lcall bcd2hex
+    lcall checkfreq2
+    lcall hex2bcd
+    lcall DisplayBCD_LCD
+      Wait_Milli_Seconds(#10)
+    lcall forever1
+    lcall movtox
+    lcall bcd2hex
+    lcall checkfreq1
+    lcall hex2bcd
+    lcall DisplayBCD_LCD
+    lcall forever2
+    lcall movtox
+    lcall bcd2hex
+    lcall checkfreq2
+    lcall hex2bcd
+    lcall DisplayBCD_LCD
+      Wait_Milli_Seconds(#10)
+    lcall forever1
+    lcall movtox
+    lcall bcd2hex
+    lcall checkfreq1
+    lcall hex2bcd
+    lcall DisplayBCD_LCD
+    lcall forever2
+    lcall movtox
+    lcall bcd2hex
+    lcall checkfreq2
+    lcall hex2bcd
+    lcall DisplayBCD_LCD
+      Wait_Milli_Seconds(#10)
+    lcall forever1
+    lcall movtox
+    lcall bcd2hex
+    lcall checkfreq1
+    lcall hex2bcd
+    lcall DisplayBCD_LCD
+    lcall forever2
+    lcall movtox
+    lcall bcd2hex
+    lcall checkfreq2
+    lcall hex2bcd
+    lcall DisplayBCD_LCD
+      Wait_Milli_Seconds(#10)
+    lcall forever1
+    lcall movtox
+    lcall bcd2hex
+    lcall checkfreq1
+    lcall hex2bcd
+    lcall DisplayBCD_LCD
+    lcall forever2
+    lcall movtox
+    lcall bcd2hex
+    lcall checkfreq2
+    lcall hex2bcd
+    lcall DisplayBCD_LCD
+    jbc p1_press, check_p2
+    jbc p2_press, p1_pressed
+
     clr a 
     mov a, p1points
     cjne a, #0x00, start_jmpsub1
+    ljmp start_jmpsub2
+
+p1_pressed:
+    clr a 
+    mov a, p1points
+    cjne a, #0x00, subplayer1
+    ljmp start_game
+
+check_p2:
+    jbc p2_press, start_game_jmp
+    ljmp subplayer2
+
+subplayer1:
+    clr a
+    mov a, p1points
+    mov x, a
+    Load_y(1)
+    lcall sub32
+    mov a, x
+    da a
+    mov p1points, a
+    clr a
+    setb p1_press
+    setb p2_press
+    clr a 
+    ljmp start_game
+
+subplayer2:
+    clr a
+    mov a, p2points
+    cjne  a, #0x00, start_jmpsub2
     ljmp start_game
 
 start_game_jmp:
@@ -865,25 +1033,10 @@ start_jmpsub1:
     clr a
     setb p1_press
     setb p2_press
-    ljmp start_game
-
-start_game_nohit2:
-    lcall forever2
-    lcall movtox
-    lcall bcd2hex
-    lcall checkfreq2
-    lcall hex2bcd
-    lcall DisplayBCD_LCD
-    setb TR1
-    jbc p2_press, start_game_nohit1
-    jbc half_seconds_flag, start_game_jmp
-    clr TR1
-    clr TR0
-    clr half_seconds_flag
     clr a 
     mov a, p2points
     cjne a, #0x00, start_jmpsub2
-    ljmp start_jmp
+    ljmp start_game
     
 start_jmpsub2:
     mov x, a
@@ -907,8 +1060,10 @@ start_jmp:
 p1win:
     setb p1_press
     setb p2_press
+    Set_Cursor(1, 11)
     Set_Cursor(1, 8)
     Send_Constant_String(#Winner1_message1)
+    Set_Cursor(2, 11)
     Set_Cursor(2, 8)
     Send_Constant_String(#Winner1_message2)
     Wait_Milli_Seconds(#5)
@@ -953,6 +1108,7 @@ p1win:
 		Wait_Milli_Seconds(#255)
 		
     jb START_BUTTON, p1win_jmp2
+    Wait_Milli_Seconds(#5)
     Wait_Milli_Seconds(#50)
     jb START_BUTTON, p1win_jmp2
     jnb START_BUTTON, $
@@ -964,8 +1120,10 @@ p1win_jmp2:
 p2win: 
     setb p1_press
     setb p2_press
+    Set_Cursor(1, 11)
     Set_Cursor(1, 8)
     Send_Constant_String(#Winner1_message2)
+    Set_Cursor(2,11)
     Set_Cursor(2,8)
     Send_Constant_String(#Winner1_message1)
     Wait_Milli_Seconds(#50)
@@ -1030,5 +1188,6 @@ restart_jmp:
 restart_game:
     mov p1points, #0x00
     mov p2points, #0x00
-    ljmp start_game	;goes back to MyProgram instead of start_game				
+    ljmp MyProgram	;goes back to MyProgram instead of start_game			
+    ;ljmp start_game	;goes back to MyProgram instead of start_game				
 end

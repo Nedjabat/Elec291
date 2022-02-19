@@ -9,11 +9,11 @@ P2_BUTTON	    equ	P2.6
 UPDOWN        	equ P0.1
 
 CLK           EQU 22118400
-TIMER0_RATE   EQU 100     ; 1000Hz, for a timer tick of 1ms
+TIMER0_RATE   EQU 1000     ; 1000Hz, for a timer tick of 1ms
 TIMER0_RELOAD EQU ((65536-(CLK/TIMER2_RATE)))
-TIMER1_RATE   EQU 4200     ; 2048Hz squarewave (peak amplitude of CEM-1203 speaker)
+TIMER1_RATE   EQU 6000      ; 2048Hz squarewave (peak amplitude of CEM-1203 speaker)
 TIMER1_RELOAD EQU ((65536-(CLK/TIMER1_RATE)))
-TIMER1_RATE1   EQU 4000  
+TIMER1_RATE1   EQU 2000  
 TIMER1_RELOAD1 EQU ((65536-(CLK/TIMER1_RATE1)))               ;2000Hz frequency lose frequency
 TIMER2_RATE   EQU 4200                 ;2100Hz frequency win frequency
 TIMER2_RELOAD EQU ((65536-(CLK/TIMER2_RATE)))
@@ -102,7 +102,7 @@ Timer1_Init:
 ; 2048 Hz square wave at pin P1.1 ;
 ;---------------------------------;
 Timer1_ISR:
-	;clr TF0  ; According to the data sheet this is done for us already.
+	clr TF1  ; According to the data sheet this is done for us already.
 	cpl SOUND_OUT ; Connect speaker to P1.1!
 	reti
 
@@ -161,7 +161,7 @@ Timer0_Init:
 ;---------------------------------;
 Timer0_ISR:
 	clr TF0  ; Timer 2 doesn't clear TF2 automatically. Do it in ISR ; To check the interrupt rate with oscilloscope. It must be precisely a 1 ms pulse.
-	
+	cpl P0.1
 	; The two registers used in the ISR must be saved in the stack
 	push acc
 	push psw
@@ -371,6 +371,9 @@ MyProgram:
     lcall InitTimer2
     lcall LCD_4BIT
     lcall Timer0_Init
+    mov P0M0, #0
+    mov P0M1, #0
+    setb TR2
     Set_Cursor(1, 1)
     Send_Constant_String(#Initial_Message)
     Set_Cursor(2, 1)
@@ -477,8 +480,9 @@ start_game:
     mov a, seed+1
     mov c, acc.3
     ;mov HLbit, c
-    ljmp lose_tone
     jc win_tone
+    ljmp lose_tone ; jc should come first???
+    
 
 lose_tone:
     lcall Timer1_Init
@@ -488,7 +492,7 @@ win_tone:
     ljmp start_game_hit1
     
 checkfreq1:
-    load_y(4645)
+    load_y(5000)
     lcall x_gteq_y
     jbc mf, freq1_nopress
     setb p1_press
@@ -499,7 +503,7 @@ freq1_nopress:
     ret
 
 checkfreq2:
-    load_y(4650)
+    load_y(5000)
     lcall x_gteq_y
     jbc mf, freq2_press
     setb p2_press
@@ -570,6 +574,7 @@ start_game_nohit1:
     lcall checkfreq1
     lcall hex2bcd
     lcall DisplayBCD_LCD
+    lcall Timer0_Init
     setb TR0
     jbc p1_press, start_game_nohit2
     jbc half_seconds_flag, start_game_jmp
@@ -583,6 +588,12 @@ start_game_nohit1:
 
 start_game_jmp:
     clr TR0
+    clr TR1
+    clr half_seconds_flag
+    clr a 
+    mov a, p2points
+    add a, #0x01
+    mov p2points, a
     ljmp start_game
 
 start_jmpsub1:
@@ -605,8 +616,9 @@ start_game_nohit2:
     lcall checkfreq2
     lcall hex2bcd
     lcall DisplayBCD_LCD
+    lcall Timer0_Init
     setb TR0
-    jbc p2_press, start_game_nohit1
+    jbc p2_press, start_game_nohit1_jmp
     jbc half_seconds_flag, start_game_jmp
     clr TR1
     clr TR0
@@ -615,6 +627,8 @@ start_game_nohit2:
     mov a, p2points
     cjne a, #0x00, start_jmpsub2
     ljmp start_jmp
+    
+
     
 start_jmpsub2:
     mov x, a
@@ -684,5 +698,9 @@ restart_jmp:
 restart_game:
     mov p1points, #0x00
     mov p2points, #0x00
+    Set_Cursor(1,1)
+    Send_Constant_String(#Clear_screen)
+    Set_Cursor(2,1)
+    Send_Constant_String(#Clear_screen)
     ljmp start_game
 end
