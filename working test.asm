@@ -840,13 +840,20 @@ p2win_jmp:
     ljmp p2win
 
 start_game_nohit1:
+    setb p1_press
+    setb p2_press
     lcall forever1
     lcall movtox
     lcall bcd2hex
     lcall checkfreq1
     lcall hex2bcd
     lcall DisplayBCD_LCD
-    setb TR0
+    lcall forever2
+    lcall movtox
+    lcall bcd2hex
+    lcall checkfreq2
+    lcall hex2bcd
+    lcall DisplayBCD_LCD
     ;jbc p1_press, start_game_nohit2
  ;   jbc half_seconds_flag, start_game_jmp
     Wait_Milli_Seconds(#10)
@@ -966,7 +973,137 @@ start_game_nohit1:
     lcall checkfreq2
     lcall hex2bcd
     lcall DisplayBCD_LCD
+    Wait_Milli_Seconds(#10)
+    lcall forever1
+    lcall movtox
+    lcall bcd2hex
+    lcall checkfreq1
+    lcall hex2bcd
+    lcall DisplayBCD_LCD
+    lcall forever2
+    lcall movtox
+    lcall bcd2hex
+    lcall checkfreq2
+    lcall hex2bcd
+    lcall DisplayBCD_LCD
+    Wait_Milli_Seconds(#10)
+    lcall forever1
+    lcall movtox
+    lcall bcd2hex
+    lcall checkfreq1
+    lcall hex2bcd
+    lcall DisplayBCD_LCD
+    lcall forever2
+    lcall movtox
+    lcall bcd2hex
+    lcall checkfreq2
+    lcall hex2bcd
+    lcall DisplayBCD_LCD
       Wait_Milli_Seconds(#10)
+    lcall forever1
+    lcall movtox
+    lcall bcd2hex
+    lcall checkfreq1
+    lcall hex2bcd
+    lcall DisplayBCD_LCD
+    lcall forever2
+    lcall movtox
+    lcall bcd2hex
+    lcall checkfreq2
+    lcall hex2bcd
+    lcall DisplayBCD_LCD
+      Wait_Milli_Seconds(#10)
+    lcall forever1
+    lcall movtox
+    lcall bcd2hex
+    lcall checkfreq1
+    lcall hex2bcd
+    lcall DisplayBCD_LCD
+    lcall forever2
+    lcall movtox
+    lcall bcd2hex
+    lcall checkfreq2
+    lcall hex2bcd
+    lcall DisplayBCD_LCD
+      Wait_Milli_Seconds(#10)
+    lcall forever1
+    lcall movtox
+    lcall bcd2hex
+    lcall checkfreq1
+    lcall hex2bcd
+    lcall DisplayBCD_LCD
+    lcall forever2
+    lcall movtox
+    lcall bcd2hex
+    lcall checkfreq2
+    lcall hex2bcd
+    lcall DisplayBCD_LCD
+      Wait_Milli_Seconds(#10)
+    lcall forever1
+    lcall movtox
+    lcall bcd2hex
+    lcall checkfreq1
+    lcall hex2bcd
+    lcall DisplayBCD_LCD
+    lcall forever2
+    lcall movtox
+    lcall bcd2hex
+    lcall checkfreq2
+    lcall hex2bcd
+    lcall DisplayBCD_LCD
+      Wait_Milli_Seconds(#10)
+    lcall forever1
+    lcall movtox
+    lcall bcd2hex
+    lcall checkfreq1
+    lcall hex2bcd
+    lcall DisplayBCD_LCD
+    lcall forever2
+    lcall movtox
+    lcall bcd2hex
+    lcall checkfreq2
+    lcall hex2bcd
+    lcall DisplayBCD_LCD
+      Wait_Milli_Seconds(#10)
+    lcall forever1
+    lcall movtox
+    lcall bcd2hex
+    lcall checkfreq1
+    lcall hex2bcd
+    lcall DisplayBCD_LCD
+    lcall forever2
+    lcall movtox
+    lcall bcd2hex
+    lcall checkfreq2
+    lcall hex2bcd
+    lcall DisplayBCD_LCD
+      Wait_Milli_Seconds(#10)
+    lcall forever1
+    lcall movtox
+    lcall bcd2hex
+    lcall checkfreq1
+    lcall hex2bcd
+    lcall DisplayBCD_LCD
+    lcall forever2
+    lcall movtox
+    lcall bcd2hex
+    lcall checkfreq2
+    lcall hex2bcd
+    lcall DisplayBCD_LCD
+      Wait_Milli_Seconds(#10)
+    lcall forever1
+    lcall movtox
+    lcall bcd2hex
+    lcall checkfreq1
+    lcall hex2bcd
+    lcall DisplayBCD_LCD
+    lcall forever2
+    lcall movtox
+    lcall bcd2hex
+    lcall checkfreq2
+    lcall hex2bcd
+    lcall DisplayBCD_LCD
+    Wait_Milli_Seconds(#10)
     lcall forever1
     lcall movtox
     lcall bcd2hex
@@ -981,11 +1118,15 @@ start_game_nohit1:
     lcall DisplayBCD_LCD
     jbc p1_press, check_p2
     jbc p2_press, p1_pressed
+    
 
     clr a 
     mov a, p1points
     cjne a, #0x00, start_jmpsub1
     ljmp start_jmpsub2
+    
+check_p2_jmp:
+	ljmp check_p2
 
 p1_pressed:
     clr a 
@@ -1019,7 +1160,6 @@ subplayer2:
     ljmp start_game
 
 start_game_jmp:
-    clr TR0
     ljmp start_game
 
 start_jmpsub1:
@@ -1049,9 +1189,6 @@ start_jmpsub2:
     clr p1_press
     clr p2_press
     ljmp start_jmp
-    
-start_game_nohit1_jmp:
-	ljmp start_game_nohit1
 
 start_jmp:
     setb p1_press
